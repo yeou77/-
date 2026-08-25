@@ -92,7 +92,8 @@ input:checked+.slider:before{transform:translateX(16px)}
 .mbadge{font-size:9px;border-radius:4px;padding:2px 6px;border:1px solid #333;color:#888;white-space:nowrap;background:#0a0a0a;cursor:pointer;max-width:96px;-webkit-appearance:none;appearance:none}
 .mbadge option{background:#1a1a1a;color:#ddd;font-size:13px}
 
-#chat{flex:1;overflow-y:auto;padding:18px 14px;scroll-behavior:smooth;-webkit-overflow-scrolling:touch}
+#chat{flex:1;overflow-y:auto;padding:18px 14px;scroll-behavior:smooth;-webkit-overflow-scrolling:touch;position:relative}
+#chatBgLayer{position:absolute;inset:0;z-index:-1;pointer-events:none;background-size:cover;background-position:center;background-repeat:no-repeat;transition:filter .1s}
 #chat::-webkit-scrollbar{width:3px}
 #chat::-webkit-scrollbar-thumb{background:#222;border-radius:2px}
 .datediv{text-align:center;font-size:11px;color:#555;margin:12px 0 16px}
@@ -232,7 +233,7 @@ input:checked+.slider:before{transform:translateX(16px)}
         <button class="iconbtn" onclick="openEditor(activePersonaId)" title="캐릭터 편집" style="font-size:12px">✎</button>
       </div>
     </div>
-    <div id="chat"><div class="empty" id="chatEmpty"></div></div>
+    <div id="chat"><div id="chatBgLayer"></div><div id="chatMsgs"><div class="empty" id="chatEmpty"></div></div></div>
     <div id="iarea">
       <div id="imgpreview"><img id="imgthumb"><button class="rmimg" onclick="clearImg()">✕</button></div>
       <div id="irow">
@@ -269,6 +270,11 @@ input:checked+.slider:before{transform:translateX(16px)}
 
     <label class="flabel">배경화면 (선택)</label>
     <div id="pe-bg-preview" style="width:100%;height:110px;border-radius:10px;background-color:#161618;background-size:cover;background-position:center;border:1px solid #2a2a2a;margin-bottom:8px;display:flex;align-items:center;justify-content:center;color:#555;font-size:12px">배경 없음</div>
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
+      <span style="font-size:11px;color:#555;flex-shrink:0">흐림</span>
+      <input type="range" id="pe-bg-intensity" min="0" max="100" value="40" oninput="onPeBgIntensityInput(this.value)" style="flex:1;accent-color:#fff">
+      <span style="font-size:11px;color:#555;flex-shrink:0">선명</span>
+    </div>
     <div class="row2" style="margin-bottom:10px">
       <button class="pbtn" style="margin:0" onclick="document.getElementById('pe-bg-file').click()">배경 이미지 선택</button>
       <button class="pbtn ghost" style="margin:0" onclick="clearPeBgImg()">배경 제거</button>
@@ -663,7 +669,14 @@ function resolveProvider(p){return (p.provider&&p.provider!=='default')?p.provid
 function resolveModel(p,provider){return p.model||modelPrefs[provider]||DEFAULT_MODELS[provider];}
 
 /* ══════════════════════ 페르소나 편집기 ══════════════════════ */
-let _editingId=null,_peAvatarImg=null,_peBgImg=null;
+let _editingId=null,_peAvatarImg=null,_peBgImg=null,_peBgIntensity=40;
+// 배경 강도(0~100)를 grayscale+brightness 필터로 변환. 0=거의 흑백+어두워서 배경이 안 보이는 느낌, 100=원본 그대로 선명.
+function bgFilterStyle(intensityPct){
+  const t=Math.max(0,Math.min(100,intensityPct))/100;
+  const gray=Math.round((1-t)*100);
+  const bright=(0.25+t*0.75).toFixed(2);
+  return `grayscale(${gray}%) brightness(${bright})`;
+}
 function openEditor(id){
   _editingId=id;
   const p=id?personas.find(x=>x.id===id):null;
@@ -678,6 +691,8 @@ function openEditor(id){
   document.getElementById('peDangerZone').style.display=p?'block':'none';
   _peAvatarImg=p?(p.avatarImg||null):null;
   _peBgImg=p?(p.bgImg||null):null;
+  _peBgIntensity=p&&p.bgIntensity!==undefined?p.bgIntensity:40;
+  document.getElementById('pe-bg-intensity').value=_peBgIntensity;
   renderPeAvatarPreview();
   renderPeBgPreview();
   document.getElementById('editorMod').style.display='flex';
@@ -691,10 +706,21 @@ function renderPeAvatarPreview(){
   else el.textContent=document.getElementById('pe-avatar').value.trim()||'👤';
 }
 function onPeEmojiInput(){if(!_peAvatarImg)renderPeAvatarPreview();}
+function onPeBgIntensityInput(v){
+  _peBgIntensity=parseInt(v,10);
+  renderPeBgPreview();
+}
 function renderPeBgPreview(){
   const el=document.getElementById('pe-bg-preview');
-  if(_peBgImg){el.style.backgroundImage=`url(${_peBgImg})`;el.textContent='';}
-  else{el.style.backgroundImage='';el.textContent='배경 없음';}
+  if(_peBgImg){
+    el.style.backgroundImage=`url(${_peBgImg})`;
+    el.style.filter=bgFilterStyle(_peBgIntensity);
+    el.textContent='';
+  }else{
+    el.style.backgroundImage='';
+    el.style.filter='';
+    el.textContent='배경 없음';
+  }
 }
 function resizeImageFile(file,maxDim,quality){
   return new Promise((resolve,reject)=>{
@@ -739,17 +765,13 @@ function setAvatarEl(el,p){
   else el.textContent=p.avatar||'👤';
 }
 function applyChatBg(p){
-  const chat=document.getElementById('chat');
+  const layer=document.getElementById('chatBgLayer');
   if(p.bgImg){
-    chat.style.backgroundImage=`linear-gradient(rgba(0,0,0,.6),rgba(0,0,0,.6)), url(${p.bgImg})`;
-    chat.style.backgroundSize='cover';
-    chat.style.backgroundPosition='center';
-    chat.style.backgroundRepeat='no-repeat';
+    layer.style.backgroundImage=`url(${p.bgImg})`;
+    layer.style.filter=bgFilterStyle(p.bgIntensity!==undefined?p.bgIntensity:40);
   }else{
-    chat.style.backgroundImage='';
-    chat.style.backgroundSize='';
-    chat.style.backgroundPosition='';
-    chat.style.backgroundRepeat='';
+    layer.style.backgroundImage='';
+    layer.style.filter='';
   }
 }
 async function savePersona(){
@@ -765,6 +787,7 @@ async function savePersona(){
   p.avatar=document.getElementById('pe-avatar').value.trim()||'👤';
   p.avatarImg=_peAvatarImg;
   p.bgImg=_peBgImg;
+  p.bgIntensity=_peBgIntensity;
   p.systemPrompt=prompt;
   p.greeting=document.getElementById('pe-greeting').value.trim();
   p.style=document.getElementById('pe-style').value;
@@ -1253,7 +1276,7 @@ async function deleteMsgAt(idx){
   });
 }
 function renderAllMsgs(){
-  const chat=document.getElementById('chat');
+  const chat=document.getElementById('chatMsgs');
   chat.innerHTML='';
   if(msgs.length===0){
     const e=document.createElement('div');e.className='empty';e.id='chatEmpty';e.textContent='대화를 시작해보세요.';
@@ -1267,7 +1290,7 @@ function renderAllMsgs(){
 }
 function showLiveBubble(){
   removeTyping();
-  const chat=document.getElementById('chat');
+  const chat=document.getElementById('chatMsgs');
   const p=personas.find(x=>x.id===activePersonaId);
   const wrap=document.createElement('div');wrap.id='livewrap';wrap.className='mwrap assistant';
   const name=document.createElement('div');name.className='mname';name.textContent=p?p.name:'';
@@ -1341,7 +1364,7 @@ async function send(){
   loading=false;document.getElementById('sbtn').disabled=false;
 }
 function addDOMUser(content,img,time){
-  const chat=document.getElementById('chat');
+  const chat=document.getElementById('chatMsgs');
   const empty=document.getElementById('chatEmpty');if(empty)empty.remove();
   const prevTime=msgs.length>0?msgs[msgs.length-1]?.time:null;
   if(!prevTime||!sameDay(prevTime,time)){const dd=document.createElement('div');dd.className='datediv';dd.textContent=fd(time);chat.appendChild(dd);}
@@ -1355,7 +1378,7 @@ function addDOMUser(content,img,time){
   chat.appendChild(wrap);scrollChat();
 }
 function addDOMError(msg){
-  const chat=document.getElementById('chat');
+  const chat=document.getElementById('chatMsgs');
   const wrap=document.createElement('div');wrap.className='mwrap error manim';
   const bub=document.createElement('div');bub.className='bubble error';bub.textContent='⚠ '+msg;
   wrap.appendChild(bub);chat.appendChild(wrap);scrollChat();
