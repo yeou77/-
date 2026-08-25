@@ -321,7 +321,7 @@ input:checked+.slider:before{transform:translateX(16px)}
         <input class="kinput" id="set-lockpw" type="password" placeholder="새 비밀번호">
         <button class="pbtn primary" style="width:auto;padding:0 16px;margin-bottom:10px" onclick="saveLockPw()">설정</button>
       </div>
-      <button class="pbtn" id="lock-remove-btn" onclick="removeLockPw()" style="border-color:#3a1a1a;color:#8b4040;display:none">잠금 해제 (비밀번호 삭제)</button>
+      <button class="pbtn" id="lock-remove-btn" onclick="removeLockPw()" style="border-color:#3a1a1a;color:#8b4040;display:none">기본 비밀번호로 되돌리기</button>
     </div>
 
     <div style="margin-top:10px;border-top:1px solid #1c1c1c;padding-top:14px">
@@ -448,11 +448,15 @@ function genId(p){return p+'_'+Date.now().toString(36)+Math.random().toString(36
 function hasAnyKey(){return PROVIDER_ORDER.some(p=>apiKeys[p]);}
 
 /* ══════════════════════ 화면 잠금 (간단 비밀번호) ══════════════════════ */
+// 기본 비밀번호 해시 — 이 값이 있으면 아무도 설정 안 한 새 기기/브라우저에서도 항상 잠금이 걸려있음.
+// 기기별로 설정에서 다른 비밀번호를 지정하면 그게 우선 적용됨.
+const DEFAULT_LOCK_HASH='1d290332a3f64655bdef5df0ae1b025feb369ee4fdb0502f5f01b55ed311d368';
 async function sha256Hex(str){
   const buf=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(str));
   return Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,'0')).join('');
 }
-function getLockHash(){return localStorage.getItem('personaLockHash')||'';}
+function getLockHash(){return localStorage.getItem('personaLockHash')||DEFAULT_LOCK_HASH;}
+function hasCustomLockPw(){return !!localStorage.getItem('personaLockHash');}
 function isUnlocked(){
   const h=getLockHash();
   if(!h)return true;
@@ -1428,9 +1432,11 @@ function openSettings(){
 }
 function closeSettings(){document.getElementById('settingsOv').style.display='none';}
 function renderLockStatus(){
-  const set=!!getLockHash();
-  document.getElementById('lock-status').textContent=set?'✓ 비밀번호가 설정돼 있어. 아래에 입력하면 변경돼.':'설정 안 됨 — 아무나 이 주소로 들어올 수 있어.';
-  document.getElementById('lock-remove-btn').style.display=set?'block':'none';
+  const custom=hasCustomLockPw();
+  document.getElementById('lock-status').textContent=custom
+    ?'✓ 이 기기는 별도 비밀번호로 설정돼 있어. 아래에 입력하면 바뀌어.'
+    :'기본 비밀번호가 걸려 있어. 이 기기만 다른 비밀번호로 바꾸려면 아래에 입력해.';
+  document.getElementById('lock-remove-btn').style.display=custom?'block':'none';
   document.getElementById('set-lockpw').value='';
 }
 async function saveLockPw(){
@@ -1441,10 +1447,10 @@ async function saveLockPw(){
   showToastLite('비밀번호가 설정됐어');
 }
 async function removeLockPw(){
-  showConf('비밀번호를 삭제하면 이 주소로 아무나 들어올 수 있어. 계속할까?',async()=>{
+  showConf('이 기기의 별도 비밀번호를 지우고 기본 비밀번호로 되돌릴까?',async()=>{
     await setLockPassword('');
     renderLockStatus();
-    showToastLite('잠금이 해제됐어');
+    showToastLite('기본 비밀번호로 되돌아갔어');
   });
 }
 async function saveAlias(){
