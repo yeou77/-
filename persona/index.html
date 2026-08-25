@@ -1,0 +1,1417 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>페르소나 챗</title>
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<link rel="icon" href="icons/icon-192.png">
+<meta name="theme-color" content="#0d0e14">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="페르소나">
+<meta name="mobile-web-app-capable" content="yes">
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;700&family=Noto+Serif+KR:wght@300;400&display=swap');
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html,body{height:100%;background:#000;color:#fff;font-family:"Noto Sans KR",sans-serif;font-weight:300;overflow:hidden}
+button,input,textarea,select{font-family:inherit}
+#app{display:flex;flex-direction:column;height:100%;max-width:680px;margin:0 auto;position:relative}
+
+/* ── 공통 ── */
+.hbtn{background:none;border:1px solid #444;color:#fff;padding:6px 12px;border-radius:6px;font-size:11px;cursor:pointer;font-family:inherit}
+.iconbtn{width:32px;height:32px;border-radius:50%;background:none;border:1px solid #333;color:#aaa;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:15px;flex-shrink:0}
+.iconbtn:hover{border-color:#666;color:#fff}
+.empty{text-align:center;color:#555;font-size:13px;padding:60px 20px;line-height:2}
+.kinput{width:100%;background:#1f2023;border:1px solid #333;border-radius:8px;padding:10px 14px;color:#fff;font-size:14px;outline:none;margin-bottom:10px}
+.ktextarea{width:100%;background:#1f2023;border:1px solid #333;border-radius:8px;padding:10px 14px;color:#fff;font-size:13px;line-height:1.6;outline:none;margin-bottom:10px;resize:vertical;min-height:90px;font-family:inherit}
+.kselect{width:100%;background:#1f2023;border:1px solid #333;border-radius:8px;padding:10px 14px;color:#fff;font-size:13px;outline:none;margin-bottom:10px}
+.flabel{font-size:11px;color:#888;margin-bottom:6px;display:block}
+.pbtn{width:100%;padding:12px;background:none;border:1px solid #333;color:#fff;border-radius:10px;font-size:13px;cursor:pointer;margin-bottom:8px}
+.pbtn.danger{border-color:#3a1a1a;color:#8b4040}
+.pbtn.primary{background:#fff;color:#000;border:none}
+.pbtn.ghost{border-color:#222;color:#555}
+.row2{display:flex;gap:8px}
+.row2>*{flex:1}
+.toggle-row{display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid #1c1c1c}
+.toggle-row:last-child{border-bottom:none}
+.switch{position:relative;width:38px;height:22px;flex-shrink:0}
+.switch input{opacity:0;width:0;height:0}
+.slider{position:absolute;inset:0;background:#333;border-radius:22px;cursor:pointer;transition:.2s}
+.slider:before{content:"";position:absolute;width:16px;height:16px;left:3px;top:3px;background:#fff;border-radius:50%;transition:.2s}
+input:checked+.slider{background:#e8c547}
+input:checked+.slider:before{transform:translateX(16px)}
+
+/* ── 초기 키 설정 화면 ── */
+#keysetup{position:fixed;inset:0;background:#000;display:none;flex-direction:column;justify-content:center;align-items:center;padding:32px;z-index:50;overflow-y:auto}
+#keysetup.active{display:flex}
+#keysetup h1{font-family:Georgia,serif;font-size:22px;margin-bottom:8px}
+#keysetup .sub{font-size:12px;color:#666;margin-bottom:24px;text-align:center;line-height:1.8}
+#keysetup .box{width:100%;max-width:400px}
+.provtabs{display:flex;gap:8px;margin-bottom:14px}
+.provtab{flex:1;padding:10px 0;border-radius:8px;font-size:12px;cursor:pointer;background:none;border:1px solid #444;color:#888;text-align:center}
+.provtab.active{background:#fff;color:#000;border-color:#fff}
+.provpanel{display:none}
+.provpanel.active{display:block}
+#kserr{color:#8b5050;font-size:12px;margin-top:8px;display:none}
+
+/* ── 홈 (페르소나 목록) ── */
+#home{display:none;flex-direction:column;height:100%}
+#home.active{display:flex}
+.home-header{display:flex;align-items:center;justify-content:space-between;padding:16px 18px 10px;flex-shrink:0}
+.home-title{font-family:Georgia,serif;font-size:19px}
+.home-list{flex:1;overflow-y:auto;padding:6px 14px 90px}
+.pcard{display:flex;align-items:center;gap:12px;padding:12px 10px;border-radius:12px;cursor:pointer;margin-bottom:4px;position:relative}
+.pcard:active{background:#141414}
+.pcard-avatar{width:48px;height:48px;border-radius:50%;background:#161618;border:1px solid #2a2a2a;display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0;overflow:hidden}
+.pcard-avatar img{width:100%;height:100%;object-fit:cover}
+.pcard-body{flex:1;min-width:0}
+.pcard-name{font-size:15px;color:#fff;display:flex;align-items:center;gap:6px}
+.pcard-provbadge{font-size:9px;color:#666;border:1px solid #333;border-radius:4px;padding:1px 5px}
+.pcard-preview{font-size:12px;color:#666;margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pcard-time{font-size:10px;color:#444;flex-shrink:0}
+.pcard-edit{width:28px;height:28px;border-radius:50%;background:none;border:1px solid #2a2a2a;color:#555;display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;font-size:12px}
+.fab{position:absolute;right:18px;bottom:22px;width:52px;height:52px;border-radius:50%;background:#fff;color:#000;border:none;font-size:24px;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 16px rgba(0,0,0,.5)}
+
+/* ── 채팅 화면 ── */
+#chatscreen{display:none;flex-direction:column;height:100%}
+#chatscreen.active{display:flex}
+#header{display:flex;align-items:center;justify-content:space-between;padding:12px 14px;border-bottom:1px solid #1c1c1c;background:#000;flex-shrink:0;gap:8px}
+#hleft{display:flex;align-items:center;gap:10px;min-width:0}
+#avatar{width:38px;height:38px;border-radius:50%;background:#161618;border:1px solid #2a2a2a;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;overflow:hidden}
+#avatar img{width:100%;height:100%;object-fit:cover}
+#hname{font-size:15px;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#hstatus{font-size:10px;color:#666;margin-top:1px}
+#hright{display:flex;align-items:center;gap:6px;flex-shrink:0}
+.mbadge{font-size:9px;border-radius:4px;padding:2px 6px;border:1px solid #333;color:#888;white-space:nowrap}
+
+#chat{flex:1;overflow-y:auto;padding:18px 14px;scroll-behavior:smooth;-webkit-overflow-scrolling:touch}
+#chat::-webkit-scrollbar{width:3px}
+#chat::-webkit-scrollbar-thumb{background:#222;border-radius:2px}
+.datediv{text-align:center;font-size:11px;color:#555;margin:12px 0 16px}
+.mwrap{display:flex;flex-direction:column;margin-bottom:16px}
+.mwrap.user{align-items:flex-end}
+.mwrap.assistant,.mwrap.error{align-items:flex-start}
+.mname{font-size:10px;color:#888;margin-bottom:4px}
+.bubble{max-width:82%;padding:11px 15px;font-size:14px;line-height:1.85;white-space:pre-wrap;letter-spacing:.2px}
+.bubble.user{background:#1a2035;border:1px solid #252d45;color:#fff;border-radius:14px 14px 4px 14px}
+.bubble.assistant{background:#1f2023;border:1px solid #2e3035;color:#f0ede8;font-family:"Noto Serif KR",Georgia,serif;font-weight:300;border-radius:14px 14px 14px 4px}
+.bubble.error{background:#1a0f0f;border:1px solid #3a2020;color:#8b5050;border-radius:14px}
+.mtime{font-size:10px;color:#3a3a3a;margin-top:4px}
+.twrap{display:flex;flex-direction:column;align-items:flex-start;margin-bottom:16px}
+.tbubble{display:flex;gap:5px;padding:12px 16px;background:#1f2023;border:1px solid #2e3035;border-radius:14px 14px 14px 4px}
+.dot{width:5px;height:5px;border-radius:50%;background:#aaa}
+@keyframes tp{0%,60%,100%{opacity:.3;transform:scale(1)}30%{opacity:1;transform:scale(1.2)}}
+@keyframes fu{from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:translateY(0)}}
+.manim{animation:fu .25s ease}
+.mactions{display:flex;gap:6px;margin-top:6px;opacity:0;transition:opacity .15s}
+.mwrap:hover .mactions{opacity:1}
+.mact{background:none;border:1px solid #2a2a2a;color:#555;width:26px;height:26px;border-radius:50%;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:12px;flex-shrink:0}
+.mact:hover{border-color:#666;color:#aaa}
+.editta{width:100%;background:#111;border:1px solid #444;border-radius:8px;padding:8px 12px;color:#fff;font-size:14px;resize:none;outline:none;min-height:60px;line-height:1.6;margin-top:6px}
+.editacts{display:flex;gap:6px;margin-top:6px}
+.editsave{flex:1;padding:7px;background:#fff;border:none;border-radius:6px;color:#000;font-size:12px;cursor:pointer}
+.editcancel{flex:1;padding:7px;background:none;border:1px solid #333;border-radius:6px;color:#666;font-size:12px;cursor:pointer}
+.bubble img{max-width:100%;border-radius:8px;margin-bottom:6px;display:block}
+
+#iarea{padding:10px 14px 20px;border-top:1px solid #1c1c1c;background:#000;flex-shrink:0}
+#imgpreview{display:none;position:relative;padding:0 0 8px}
+#imgpreview img{width:60px;height:60px;object-fit:cover;border-radius:8px;border:1px solid #333}
+#imgpreview .rmimg{position:absolute;top:-4px;left:56px;background:#333;border:none;color:#aaa;border-radius:50%;width:18px;height:18px;font-size:11px;cursor:pointer;display:flex;align-items:center;justify-content:center}
+#irow{display:flex;align-items:flex-end;gap:8px;background:#111;border:1px solid rgba(255,255,255,.15);border-radius:20px;padding:7px 7px 7px 15px}
+#minput{flex:1;background:none;border:none;outline:none;color:#fff;font-size:14px;font-weight:300;resize:none;max-height:120px;min-height:22px;line-height:1.5}
+#minput::placeholder{color:#555}
+#sbtn{width:32px;height:32px;border-radius:50%;background:#fff;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+#sbtn:disabled{background:#333;cursor:not-allowed}
+#imgbtn{width:28px;height:28px;border-radius:50%;background:none;border:1px solid #444;color:#888;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:14px}
+
+/* ── 오버레이 / 패널 ── */
+.ov{position:fixed;inset:0;background:rgba(0,0,0,.8);display:flex;align-items:flex-end;z-index:100}
+.panel{background:#111;border-top:1px solid #333;width:100%;max-width:680px;margin:0 auto;padding:22px 20px 28px;border-radius:20px 20px 0 0;max-height:85vh;overflow-y:auto}
+.ptitle{font-family:Georgia,serif;font-size:16px;margin-bottom:16px}
+.mitem{padding:10px 14px;background:#1f2023;border:1px solid #333;border-radius:8px;margin-bottom:8px}
+.mkey{font-size:10px;color:#aaa;margin-bottom:3px}
+.mval{font-size:13px;color:#fff;line-height:1.6}
+.macts{display:flex;justify-content:space-between;align-items:center;margin-bottom:4px}
+.medbtn{background:none;border:1px solid #444;color:#aaa;font-size:10px;padding:2px 8px;border-radius:4px;cursor:pointer}
+.mdelbtn{background:none;border:1px solid #3a1a1a;color:#8b4040;font-size:10px;padding:2px 8px;border-radius:4px;cursor:pointer}
+.medta{width:100%;background:#0a0a0a;border:1px solid #444;border-radius:6px;padding:6px 10px;color:#fff;font-size:13px;resize:none;outline:none;min-height:60px;margin-top:4px}
+.medacts{display:flex;gap:6px;margin-top:6px}
+.medsave{flex:1;padding:6px;background:#fff;border:none;border-radius:6px;color:#000;font-size:12px;cursor:pointer}
+.medcancel{flex:1;padding:6px;background:none;border:1px solid #333;border-radius:6px;color:#666;font-size:12px;cursor:pointer}
+
+/* ── 풀스크린 폼(페르소나 편집기 / 내보내기 / 불러오기) ── */
+.fmod{position:fixed;inset:0;background:#050505;display:flex;flex-direction:column;z-index:200;overflow-y:auto}
+.fmod-header{display:flex;align-items:center;justify-content:space-between;padding:16px 18px;border-bottom:1px solid #1c1c1c;flex-shrink:0;position:sticky;top:0;background:#050505;z-index:2}
+.fmod-title{font-family:Georgia,serif;font-size:16px}
+.fmod-body{padding:18px;flex:1}
+.fhint{font-size:11px;color:#666;margin-bottom:14px;line-height:1.7}
+.fbtns{display:flex;gap:8px;padding:14px 18px 24px;border-top:1px solid #1c1c1c;flex-shrink:0}
+.fbtn{flex:1;padding:14px;background:none;border:1px solid #444;border-radius:10px;color:#888;font-size:14px;cursor:pointer}
+.fbtn.primary{background:#fff;color:#000;border:none}
+
+/* ── 확인 모달 ── */
+.confmod{position:fixed;inset:0;background:rgba(0,0,0,.75);display:flex;align-items:center;justify-content:center;z-index:300}
+.confbox{background:#1a1a1a;border:1px solid #333;border-radius:16px;padding:28px 24px 20px;width:280px;text-align:center}
+.confmsg{font-size:15px;color:#fff;margin-bottom:22px;line-height:1.6}
+.confbtns{display:flex;gap:10px}
+.confcancel{flex:1;padding:12px;background:none;border:1px solid #444;border-radius:10px;color:#aaa;font-size:14px;cursor:pointer}
+.confok{flex:1;padding:12px;background:#c0392b;border:none;border-radius:10px;color:#fff;font-size:14px;cursor:pointer;font-weight:400}
+</style>
+</head>
+<body>
+
+<div id="app">
+
+  <!-- ══ 최초 API 키 설정 ══ -->
+  <div id="keysetup">
+    <h1>페르소나 챗</h1>
+    <p class="sub">먼저 대화에 쓸 AI의 API 키를 하나 이상 등록해줘.<br>키는 이 기기에만 저장되고 외부로 전송되지 않아.</p>
+    <div class="box">
+      <div class="provtabs">
+        <button class="provtab active" data-p="claude" onclick="ksTab('claude')">Claude</button>
+        <button class="provtab" data-p="openai" onclick="ksTab('openai')">ChatGPT</button>
+        <button class="provtab" data-p="gemini" onclick="ksTab('gemini')">Gemini</button>
+      </div>
+      <div class="provpanel active" data-p="claude"><input class="kinput" id="ks-claude" type="password" placeholder="sk-ant-api03-..."></div>
+      <div class="provpanel" data-p="openai"><input class="kinput" id="ks-openai" type="password" placeholder="sk-..."></div>
+      <div class="provpanel" data-p="gemini"><input class="kinput" id="ks-gemini" type="password" placeholder="AIza..."></div>
+      <button class="pbtn primary" onclick="doKeySetup()">시작하기</button>
+      <p id="kserr"></p>
+    </div>
+  </div>
+
+  <!-- ══ 홈: 페르소나 목록 ══ -->
+  <div id="home">
+    <div class="home-header">
+      <div class="home-title">페르소나</div>
+      <button class="iconbtn" onclick="openSettings()">⚙</button>
+    </div>
+    <div class="home-list" id="homeList"></div>
+    <button class="fab" onclick="openEditor(null)">+</button>
+  </div>
+
+  <!-- ══ 채팅 화면 ══ -->
+  <div id="chatscreen">
+    <div id="header">
+      <div id="hleft" onclick="goHome()">
+        <button class="iconbtn" style="flex-shrink:0" onclick="event.stopPropagation();goHome()">←</button>
+        <div id="avatar"></div>
+        <div style="min-width:0">
+          <div id="hname"></div>
+          <div id="hstatus"></div>
+        </div>
+      </div>
+      <div id="hright">
+        <span id="mbadge" class="mbadge"></span>
+        <button class="iconbtn" onclick="openSum()" title="장기기억" style="font-size:12px">🧠</button>
+        <button class="iconbtn" onclick="openMem()" title="유저노트" style="font-size:12px">📝</button>
+        <button class="iconbtn" onclick="openEditor(activePersonaId)" title="편집" style="font-size:12px">⚙</button>
+      </div>
+    </div>
+    <div id="chat"><div class="empty" id="chatEmpty"></div></div>
+    <div id="iarea">
+      <div id="imgpreview"><img id="imgthumb"><button class="rmimg" onclick="clearImg()">✕</button></div>
+      <div id="irow">
+        <button id="imgbtn" onclick="document.getElementById('fileinput').click()">📎</button>
+        <input type="file" id="fileinput" accept="image/*" style="display:none" onchange="onImgSelect(this)">
+        <textarea id="minput" placeholder="메시지 입력..." rows="1"></textarea>
+        <button id="sbtn" onclick="send()"><svg width="15" height="15" viewBox="0 0 24 24" fill="#000"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg></button>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- ══ 페르소나 편집기 ══ -->
+<div id="editorMod" class="fmod" style="display:none">
+  <div class="fmod-header">
+    <div class="fmod-title" id="editorTitle">새 페르소나</div>
+    <button class="iconbtn" onclick="closeEditor()">✕</button>
+  </div>
+  <div class="fmod-body">
+    <label class="flabel">이름 *</label>
+    <input class="kinput" id="pe-name" placeholder="캐릭터 이름">
+    <label class="flabel">아바타 이모지</label>
+    <input class="kinput" id="pe-avatar" placeholder="👤" maxlength="4" style="width:80px">
+    <label class="flabel">캐릭터 설정 *</label>
+    <textarea class="ktextarea" id="pe-prompt" style="min-height:220px" placeholder="예시 구조:
+[정체성] 이 캐릭터가 누구인지, 나와의 관계
+[성격] 핵심 성격, 가치관, 모순되는 면
+[말투] 반말/존댓말, 어투, 자주 쓰는 표현
+[말투 레퍼런스] 이 캐릭터가 말하는 예시 문단을 2~3개 직접 써주면 훨씬 정확해짐
+[촉발 조건] 특정 상황에서 어떻게 반응하는지
+
+자유 형식으로 써도 되고, 위 구조를 참고해서 최대한 구체적으로 적을수록 캐릭터가 일관되게 유지돼."></textarea>
+    <label class="flabel">첫 인사말 (선택, 대화 시작 시 먼저 보냄)</label>
+    <textarea class="ktextarea" id="pe-greeting" style="min-height:60px" placeholder="비워두면 첫 인사 없이 유저가 먼저 말 걸 때까지 기다림"></textarea>
+    <label class="flabel">서술 방식</label>
+    <select class="kselect" id="pe-style">
+      <option value="novel">3인칭 소설체 (지문+대사)</option>
+      <option value="chat">메신저 대화체 (짧은 대사 위주)</option>
+      <option value="free">자유 (모델이 알아서 판단)</option>
+    </select>
+    <label class="flabel">사용할 모델</label>
+    <select class="kselect" id="pe-provider" onchange="onPeProviderChange()">
+      <option value="default">기본 설정 따르기</option>
+      <option value="claude">Claude</option>
+      <option value="openai">ChatGPT (OpenAI)</option>
+      <option value="gemini">Gemini</option>
+    </select>
+    <div class="toggle-row">
+      <div>
+        <div style="font-size:13px;color:#ddd">성인 콘텐츠 허용</div>
+        <div style="font-size:11px;color:#555;margin-top:2px">켜면 대화 시작 시 성인 창작물임을 명시하는 문구가 추가돼</div>
+      </div>
+      <label class="switch"><input type="checkbox" id="pe-adult"><span class="slider"></span></label>
+    </div>
+    <div id="peDangerZone" style="display:none;margin-top:24px;padding-top:18px;border-top:1px solid #1c1c1c">
+      <div class="flabel" style="margin-bottom:10px">위험 영역</div>
+      <button class="pbtn danger" onclick="doResetPersonaChat()">이 캐릭터 대화만 초기화</button>
+      <button class="pbtn danger" onclick="doDeletePersona()">이 페르소나 삭제</button>
+    </div>
+  </div>
+  <div class="fbtns">
+    <button class="fbtn" onclick="closeEditor()">취소</button>
+    <button class="fbtn primary" onclick="savePersona()">저장</button>
+  </div>
+</div>
+
+<!-- ══ 설정 ══ -->
+<div id="settingsOv" class="ov" style="display:none" onclick="if(event.target===this)closeSettings()">
+  <div class="panel">
+    <div class="ptitle">설정</div>
+
+    <label class="flabel">내 호칭 (캐릭터가 나를 부르는 이름, 선택)</label>
+    <div class="row2" style="margin-bottom:4px">
+      <input class="kinput" id="set-alias" placeholder="예: 지민, 그냥 너">
+      <button class="pbtn primary" style="width:auto;padding:0 16px;margin-bottom:10px" onclick="saveAlias()">저장</button>
+    </div>
+
+    <div style="margin-top:10px;border-top:1px solid #1c1c1c;padding-top:14px">
+      <label class="flabel">기본 모델 (페르소나가 "기본 설정 따르기"일 때 사용)</label>
+      <select class="kselect" id="set-defprov" onchange="saveDefaultProvider(this.value)">
+        <option value="claude">Claude</option>
+        <option value="openai">ChatGPT (OpenAI)</option>
+        <option value="gemini">Gemini</option>
+      </select>
+    </div>
+
+    <div style="margin-top:14px;border-top:1px solid #1c1c1c;padding-top:14px">
+      <label class="flabel">Claude API 키</label>
+      <div class="row2"><input class="kinput" id="key-claude" type="password" placeholder="sk-ant-..."><button class="pbtn primary" style="width:auto;padding:0 16px;margin-bottom:10px" onclick="saveKey('claude')">저장</button></div>
+      <label class="flabel">OpenAI(ChatGPT) API 키</label>
+      <div class="row2"><input class="kinput" id="key-openai" type="password" placeholder="sk-..."><button class="pbtn primary" style="width:auto;padding:0 16px;margin-bottom:10px" onclick="saveKey('openai')">저장</button></div>
+      <label class="flabel">Gemini API 키</label>
+      <div class="row2"><input class="kinput" id="key-gemini" type="password" placeholder="AIza..."><button class="pbtn primary" style="width:auto;padding:0 16px;margin-bottom:10px" onclick="saveKey('gemini')">저장</button></div>
+    </div>
+
+    <div style="margin-top:4px;border-top:1px solid #1c1c1c;padding-top:16px">
+      <div class="flabel">데이터 관리 (모든 페르소나·대화·기억 포함)</div>
+      <div style="font-size:11px;color:#555;margin-bottom:10px;line-height:1.7">이 기기에만 저장돼. 다른 기기로 옮기거나 백업하려면 내보내기 한 파일을 구글 드라이브 등에 저장해두고, 새 기기에서 불러오기 하면 돼.</div>
+      <button class="pbtn" onclick="closeSettings();doExport()" style="border-color:#555">전체 내보내기 (백업)</button>
+      <button class="pbtn" onclick="closeSettings();openImport()" style="color:#aaa;border-color:#444">불러오기 (복원)</button>
+      <button class="pbtn danger" onclick="closeSettings();doResetAll()">전체 초기화 (모든 페르소나 삭제)</button>
+    </div>
+    <button class="pbtn ghost" onclick="closeSettings()" style="margin-top:4px">닫기</button>
+  </div>
+</div>
+
+<!-- ══ 유저노트 ══ -->
+<div id="memOv" class="ov" style="display:none" onclick="if(event.target===this)closeMem()">
+  <div class="panel">
+    <div class="ptitle">유저노트</div>
+    <div style="font-size:12px;color:#555;margin-bottom:12px;line-height:1.6">대화 중 자동으로 수집된 정보야. 자동 추출이 실패했으면 직접 추가해도 돼.</div>
+    <div id="memlist"></div>
+    <button class="pbtn ghost" onclick="closeMem()" style="margin-top:16px">닫기</button>
+  </div>
+</div>
+
+<!-- ══ 장기기억(요약) ══ -->
+<div id="sumOv" class="ov" style="display:none" onclick="if(event.target===this)closeSum()">
+  <div class="panel">
+    <div class="ptitle">장기기억</div>
+    <div id="sumlist"></div>
+    <button class="pbtn ghost" onclick="closeSum()" style="margin-top:16px">닫기</button>
+  </div>
+</div>
+
+<!-- ══ 내보내기 ══ -->
+<div id="expMod" class="ov" style="display:none">
+  <div class="panel">
+    <div class="ptitle">전체 내보내기</div>
+    <div class="fhint">모든 페르소나·대화·기억·설정을 파일 하나로 저장해. 저장된 파일은 폰의 "다운로드" 폴더에 생기고, 거기서 구글 드라이브 앱으로 옮기거나 공유하면 백업이 완성돼.</div>
+    <button class="pbtn primary" onclick="doExportJSON()" style="padding:14px">JSON 파일로 저장</button>
+    <button class="pbtn ghost" onclick="document.getElementById('expMod').style.display='none'">닫기</button>
+  </div>
+</div>
+
+<!-- ══ 불러오기 ══ -->
+<div id="impMod" class="ov" style="display:none">
+  <div class="panel">
+    <div class="ptitle">불러오기 (복원)</div>
+    <div class="fhint">내보내기로 저장한 JSON 파일을 선택하면 페르소나·대화·기억이 복원돼.</div>
+    <div class="row2" style="margin-bottom:14px">
+      <button class="pbtn" style="border-color:#555" onclick="_impMode='merge';document.getElementById('impfile').click()">추가 (기존 유지)</button>
+      <button class="pbtn danger" onclick="_impMode='replace';document.getElementById('impfile').click()">교체 (기존 삭제 후 복원)</button>
+    </div>
+    <input type="file" id="impfile" accept=".json" style="display:none" onchange="onImpFile(this)">
+    <div id="impstatus" style="font-size:12px;color:#555;text-align:center;min-height:20px;margin-bottom:8px"></div>
+    <button class="pbtn ghost" onclick="closeImport()">닫기</button>
+  </div>
+</div>
+
+<!-- ══ 확인 ══ -->
+<div id="confMod" class="confmod" style="display:none">
+  <div class="confbox">
+    <div class="confmsg" id="confMsgText">정말로 삭제하시겠어요?</div>
+    <div class="confbtns">
+      <button class="confcancel" onclick="closeConf()">취소</button>
+      <button class="confok" onclick="confOk()">삭제</button>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ══════════════════════ 상태 ══════════════════════ */
+let db=null;
+let personas=[];          // 페르소나 메타데이터 전체 목록
+let activePersonaId=null;
+let msgs=[],mems={},summaries=[];
+let apiKeys={claude:'',openai:'',gemini:''};
+let modelPrefs={claude:'claude-sonnet-4-6',openai:'gpt-4o',gemini:'gemini-2.5-flash'};
+let userAlias='';
+let defaultProvider='claude';
+let loading=false,pendingImg=null;
+let _confCb=null,_impMode='merge',_impData=null,_ksSelected='claude';
+const STREAM_TARGET=650,STREAM_MAX=850;
+const PROVIDER_LABEL={claude:'Claude',openai:'ChatGPT',gemini:'Gemini'};
+const DEFAULT_MODELS={claude:'claude-sonnet-4-6',openai:'gpt-4o',gemini:'gemini-2.5-flash'};
+
+function genId(p){return p+'_'+Date.now().toString(36)+Math.random().toString(36).slice(2,8);}
+function noSpLen(s){return s.replace(/\s/g,'').length;}
+function atSentEnd(s){return /[.!?"。]\s*$/.test(s);}
+function trimToSentence(t){
+  const s=t.trimEnd();
+  if(/[.!?。"]$/.test(s))return s;
+  if(noSpLen(s)<200)return s;
+  const i=Math.max(s.lastIndexOf('.'),s.lastIndexOf('!'),s.lastIndexOf('?'),s.lastIndexOf('"'));
+  if(i>s.length*0.5)return s.slice(0,i+1).trimEnd();
+  return s;
+}
+function extractJSON(text){
+  if(!text)return null;
+  let t=text.replace(/```json|```/g,'').trim();
+  const arrMatch=t.match(/\[[\s\S]*\]/);
+  const objMatch=t.match(/\{[\s\S]*\}/);
+  const candidate=arrMatch?arrMatch[0]:(objMatch?objMatch[0]:t);
+  try{return JSON.parse(candidate);}catch(e){return null;}
+}
+
+/* ══════════════════════ IndexedDB 계층 ══════════════════════ */
+const DB_NAME='personaChatDB',DB_VER=1;
+function openDatabase(){
+  return new Promise((resolve,reject)=>{
+    const req=indexedDB.open(DB_NAME,DB_VER);
+    req.onupgradeneeded=e=>{
+      const d=e.target.result;
+      if(!d.objectStoreNames.contains('personas'))d.createObjectStore('personas',{keyPath:'id'});
+      if(!d.objectStoreNames.contains('messages')){const s=d.createObjectStore('messages',{keyPath:'id',autoIncrement:true});s.createIndex('personaId','personaId');}
+      if(!d.objectStoreNames.contains('memories')){const s=d.createObjectStore('memories',{keyPath:'id',autoIncrement:true});s.createIndex('personaId','personaId');}
+      if(!d.objectStoreNames.contains('summaries')){const s=d.createObjectStore('summaries',{keyPath:'id',autoIncrement:true});s.createIndex('personaId','personaId');}
+      if(!d.objectStoreNames.contains('settings'))d.createObjectStore('settings',{keyPath:'key'});
+    };
+    req.onsuccess=e=>resolve(e.target.result);
+    req.onerror=e=>reject(e.target.error);
+  });
+}
+function store(name,mode){return db.transaction(name,mode||'readonly').objectStore(name);}
+function idbGetAll(name,indexName,query){
+  return new Promise((resolve,reject)=>{
+    const os=store(name);
+    const src=indexName?os.index(indexName):os;
+    const req=src.getAll(query);
+    req.onsuccess=()=>resolve(req.result);
+    req.onerror=()=>reject(req.error);
+  });
+}
+function idbGet(name,key){
+  return new Promise((resolve,reject)=>{
+    const req=store(name).get(key);
+    req.onsuccess=()=>resolve(req.result);
+    req.onerror=()=>reject(req.error);
+  });
+}
+function idbPut(name,val){
+  return new Promise((resolve,reject)=>{
+    const req=store(name,'readwrite').put(val);
+    req.onsuccess=()=>resolve(req.result);
+    req.onerror=()=>reject(req.error);
+  });
+}
+function idbDelete(name,key){
+  return new Promise((resolve,reject)=>{
+    const req=store(name,'readwrite').delete(key);
+    req.onsuccess=()=>resolve();
+    req.onerror=()=>reject(req.error);
+  });
+}
+function idbDeleteByIndex(name,indexName,query){
+  return new Promise((resolve,reject)=>{
+    const idx=store(name,'readwrite').index(indexName);
+    const req=idx.openCursor(query);
+    req.onsuccess=e=>{const c=e.target.result;if(c){c.delete();c.continue();}else resolve();};
+    req.onerror=()=>reject(req.error);
+  });
+}
+function idbClearAll(name){
+  return new Promise((resolve,reject)=>{
+    const req=store(name,'readwrite').clear();
+    req.onsuccess=()=>resolve();req.onerror=()=>reject(req.error);
+  });
+}
+
+/* ══════════════════════ 초기 로드 ══════════════════════ */
+async function loadSettings(){
+  const [k,m,a,d]=await Promise.all([idbGet('settings','apiKeys'),idbGet('settings','modelPrefs'),idbGet('settings','userAlias'),idbGet('settings','defaultProvider')]);
+  if(k)apiKeys=Object.assign(apiKeys,k.value);
+  if(m)modelPrefs=Object.assign(modelPrefs,m.value);
+  if(a)userAlias=a.value||'';
+  if(d)defaultProvider=d.value||'claude';
+}
+async function loadPersonas(){
+  personas=await idbGetAll('personas')||[];
+  personas.sort((a,b)=>(b.lastActive||b.createdAt||0)-(a.lastActive||a.createdAt||0));
+}
+
+async function boot(){
+  db=await openDatabase();
+  await loadSettings();
+  await loadPersonas();
+  if(!apiKeys.claude&&!apiKeys.openai&&!apiKeys.gemini){
+    document.getElementById('keysetup').classList.add('active');
+    return;
+  }
+  document.getElementById('keysetup').classList.remove('active');
+  renderHome();
+  showView('home');
+}
+
+/* ══════════════════════ 화면 전환 ══════════════════════ */
+function showView(name){
+  document.getElementById('home').classList.toggle('active',name==='home');
+  document.getElementById('chatscreen').classList.toggle('active',name==='chat');
+}
+function goHome(){activePersonaId=null;renderHome();showView('home');}
+
+/* ══════════════════════ 최초 키 설정 ══════════════════════ */
+function ksTab(p){
+  _ksSelected=p;
+  document.querySelectorAll('.provtab').forEach(b=>b.classList.toggle('active',b.dataset.p===p));
+  document.querySelectorAll('.provpanel').forEach(b=>b.classList.toggle('active',b.dataset.p===p));
+}
+async function doKeySetup(){
+  const c=document.getElementById('ks-claude').value.trim();
+  const o=document.getElementById('ks-openai').value.trim();
+  const g=document.getElementById('ks-gemini').value.trim();
+  if(!c&&!o&&!g){
+    const e=document.getElementById('kserr');e.textContent='최소 하나의 API 키를 입력해줘.';e.style.display='block';return;
+  }
+  if(c)apiKeys.claude=c;if(o)apiKeys.openai=o;if(g)apiKeys.gemini=g;
+  await idbPut('settings',{key:'apiKeys',value:apiKeys});
+  defaultProvider=c?'claude':(o?'openai':'gemini');
+  await idbPut('settings',{key:'defaultProvider',value:defaultProvider});
+  document.getElementById('keysetup').classList.remove('active');
+  renderHome();showView('home');
+}
+
+/* ══════════════════════ 홈: 페르소나 목록 ══════════════════════ */
+function renderHome(){
+  const list=document.getElementById('homeList');
+  if(!personas.length){
+    list.innerHTML='<div class="empty">아직 페르소나가 없어.<br><span style="font-size:11px;opacity:.5">오른쪽 아래 + 버튼으로 첫 캐릭터를 만들어봐.</span></div>';
+    return;
+  }
+  list.innerHTML='';
+  personas.forEach(p=>{
+    const card=document.createElement('div');card.className='pcard';
+    card.onclick=()=>openChat(p.id);
+    const av=document.createElement('div');av.className='pcard-avatar';av.textContent=p.avatar||'👤';
+    const body=document.createElement('div');body.className='pcard-body';
+    const nameRow=document.createElement('div');nameRow.className='pcard-name';
+    nameRow.innerHTML=`<span>${escapeHtml(p.name)}</span><span class="pcard-provbadge">${PROVIDER_LABEL[resolveProvider(p)]}</span>`;
+    const prev=document.createElement('div');prev.className='pcard-preview';prev.textContent=p.lastPreview||'대화를 시작해보세요';
+    body.appendChild(nameRow);body.appendChild(prev);
+    const editBtn=document.createElement('button');editBtn.className='pcard-edit';editBtn.textContent='✎';
+    editBtn.onclick=(e)=>{e.stopPropagation();openEditor(p.id);};
+    card.appendChild(av);card.appendChild(body);card.appendChild(editBtn);
+    list.appendChild(card);
+  });
+}
+function escapeHtml(s){const d=document.createElement('div');d.textContent=s||'';return d.innerHTML;}
+function resolveProvider(p){return (p.provider&&p.provider!=='default')?p.provider:defaultProvider;}
+function resolveModel(p,provider){return p.model||modelPrefs[provider]||DEFAULT_MODELS[provider];}
+
+/* ══════════════════════ 페르소나 편집기 ══════════════════════ */
+let _editingId=null;
+function openEditor(id){
+  _editingId=id;
+  const p=id?personas.find(x=>x.id===id):null;
+  document.getElementById('editorTitle').textContent=p?'페르소나 편집':'새 페르소나';
+  document.getElementById('pe-name').value=p?p.name:'';
+  document.getElementById('pe-avatar').value=p?(p.avatar||''):'';
+  document.getElementById('pe-prompt').value=p?p.systemPrompt:'';
+  document.getElementById('pe-greeting').value=p?(p.greeting||''):'';
+  document.getElementById('pe-style').value=p?(p.style||'novel'):'novel';
+  document.getElementById('pe-provider').value=p?(p.provider||'default'):'default';
+  document.getElementById('pe-adult').checked=!!(p&&p.adult);
+  document.getElementById('peDangerZone').style.display=p?'block':'none';
+  document.getElementById('editorMod').style.display='flex';
+}
+function closeEditor(){document.getElementById('editorMod').style.display='none';_editingId=null;}
+function onPeProviderChange(){}
+async function savePersona(){
+  const name=document.getElementById('pe-name').value.trim();
+  const prompt=document.getElementById('pe-prompt').value.trim();
+  if(!name){alert('이름을 입력해줘.');return;}
+  if(!prompt){alert('캐릭터 설정을 입력해줘.');return;}
+  const now=Date.now();
+  let p=_editingId?personas.find(x=>x.id===_editingId):null;
+  const isNew=!p;
+  if(!p){p={id:genId('p'),createdAt:now};personas.push(p);}
+  p.name=name;
+  p.avatar=document.getElementById('pe-avatar').value.trim()||'👤';
+  p.systemPrompt=prompt;
+  p.greeting=document.getElementById('pe-greeting').value.trim();
+  p.style=document.getElementById('pe-style').value;
+  p.provider=document.getElementById('pe-provider').value;
+  p.adult=document.getElementById('pe-adult').checked;
+  p.lastActive=p.lastActive||now;
+  await idbPut('personas',p);
+  closeEditor();
+  renderHome();
+  if(activePersonaId===p.id){
+    document.getElementById('hname').textContent=p.name;
+    document.getElementById('avatar').textContent=p.avatar;
+    updateBadge(p);
+  }
+  if(isNew)openChat(p.id);
+}
+function doResetPersonaChat(){
+  if(!_editingId)return;
+  showConf('이 캐릭터의 대화·기억·요약이 전부 삭제돼. 페르소나 설정은 유지돼. 계속할까?',async()=>{
+    await Promise.all([
+      idbDeleteByIndex('messages','personaId',IDBKeyRange.only(_editingId)),
+      idbDeleteByIndex('memories','personaId',IDBKeyRange.only(_editingId)),
+      idbDeleteByIndex('summaries','personaId',IDBKeyRange.only(_editingId)),
+    ]);
+    const p=personas.find(x=>x.id===_editingId);
+    if(p){p.lastPreview='';await idbPut('personas',p);}
+    if(activePersonaId===_editingId){msgs=[];mems={};summaries=[];renderAllMsgs();}
+    renderHome();
+    closeEditor();
+  });
+}
+function doDeletePersona(){
+  if(!_editingId)return;
+  const id=_editingId;
+  showConf('이 페르소나와 모든 대화·기억이 영구히 삭제돼. 정말 삭제할까?',async()=>{
+    await Promise.all([
+      idbDelete('personas',id),
+      idbDeleteByIndex('messages','personaId',IDBKeyRange.only(id)),
+      idbDeleteByIndex('memories','personaId',IDBKeyRange.only(id)),
+      idbDeleteByIndex('summaries','personaId',IDBKeyRange.only(id)),
+    ]);
+    personas=personas.filter(x=>x.id!==id);
+    closeEditor();
+    if(activePersonaId===id){goHome();}else{renderHome();}
+  });
+}
+
+/* ══════════════════════ 확인 모달 ══════════════════════ */
+function showConf(msg,cb){document.getElementById('confMsgText').textContent=msg;_confCb=cb;document.getElementById('confMod').style.display='flex';}
+function closeConf(){document.getElementById('confMod').style.display='none';_confCb=null;}
+function confOk(){const cb=_confCb;closeConf();if(cb)cb();}
+
+/* ══════════════════════ 채팅 열기 ══════════════════════ */
+async function openChat(id){
+  activePersonaId=id;
+  const p=personas.find(x=>x.id===id);
+  if(!p)return;
+  document.getElementById('hname').textContent=p.name;
+  document.getElementById('avatar').textContent=p.avatar||'👤';
+  document.getElementById('hstatus').textContent='';
+  updateBadge(p);
+  const [ms,mm,ss]=await Promise.all([
+    idbGetAll('messages','personaId',IDBKeyRange.only(id)),
+    idbGetAll('memories','personaId',IDBKeyRange.only(id)),
+    idbGetAll('summaries','personaId',IDBKeyRange.only(id)),
+  ]);
+  msgs=(ms||[]).sort((a,b)=>a.time-b.time);
+  mems={};(mm||[]).forEach(m=>mems[m.key]=m.value);
+  summaries=(ss||[]).sort((a,b)=>(a.createdAt||0)-(b.createdAt||0));
+  renderAllMsgs();
+  showView('chat');
+  const last=msgs[msgs.length-1];
+  if(msgs.length===0&&p.greeting){
+    addGreetingMsg(p.greeting);
+  }else if(last)await maybeFirstGreet(p);
+}
+function updateBadge(p){
+  const provider=resolveProvider(p);
+  document.getElementById('mbadge').textContent=PROVIDER_LABEL[provider];
+}
+async function addGreetingMsg(text){
+  const now=Date.now();
+  const id=await idbPut('messages',{personaId:activePersonaId,role:'assistant',content:text,time:now});
+  msgs.push({id,personaId:activePersonaId,role:'assistant',content:text,time:now});
+  renderAllMsgs();
+  await touchPersonaPreview(text);
+}
+async function touchPersonaPreview(text){
+  const p=personas.find(x=>x.id===activePersonaId);
+  if(!p)return;
+  p.lastPreview=text.slice(0,40);
+  p.lastActive=Date.now();
+  await idbPut('personas',p);
+}
+
+/* ══════════════════════ 시스템 프롬프트 구성 ══════════════════════ */
+const CONTENT_NOTICE="[서비스 고지] 이 대화는 창작 롤플레잉이며 모든 등장인물은 성인 기준의 가상 인물이다. 실제 사건·인물과 무관한 허구다.\n\n";
+const STYLE_GUIDE={
+  novel:`[서술 방식]
+3인칭 소설체. 행동 묘사는 ~했다체 서술, 대사는 큰따옴표로 구분할 것.
+대사와 지문 사이에는 빈 줄을 넣어 문단을 분리할 것.
+감정을 직접 설명하지 말고 인물의 행동·표정·말투로만 드러낼 것.
+분량은 상황에 맞게 조절 — 일상 대화는 짧게, 감정적으로 중요한 장면은 조금 더 길게. 분량보다 밀도가 중요함.`,
+  chat:`[서술 방식]
+메신저 대화체. 지문이나 소설체 묘사 없이, 캐릭터의 말투 그대로 짧고 자연스러운 메시지처럼 답할 것.`,
+  free:`[서술 방식]
+아래 캐릭터 설정에 자연스럽게 어울리는 문체를 스스로 판단해서 사용할 것.`
+};
+function getTC(personaName){
+  const now=new Date();
+  const ns=new Intl.DateTimeFormat('ko-KR',{year:'numeric',month:'long',day:'numeric',weekday:'short',hour:'2-digit',minute:'2-digit',hour12:false}).format(now);
+  const last=[...msgs].reverse().find(m=>m.role==='assistant')||[...msgs].reverse().find(m=>m.role==='user');
+  if(!last)return '현재 시각: '+ns;
+  const diff=now-last.time,dm=Math.floor(diff/60000),dh=Math.floor(diff/3600000),dd=Math.floor(diff/86400000);
+  const gap=dm<2?'방금 전':dm<60?dm+'분 전':dh<24?dh+'시간 전':dd+'일 전';
+  const ls=new Intl.DateTimeFormat('ko-KR',{month:'long',day:'numeric',hour:'2-digit',minute:'2-digit',hour12:false}).format(new Date(last.time));
+  let t='현재 시각: '+ns+'\n마지막 대화: '+gap+' ('+ls+')';
+  if(dm<30){t+='\n[시간 흐름 지침] 방금 전. 이전 장면 그대로 이어가도 됨.';}
+  else if(dh<3){t+='\n[시간 흐름 지침] '+gap+' 경과. 시간이 흘렀음을 인식하되 직전 분위기와 감정 흐름에 맞게 자연스럽게 반영할 것.';}
+  else if(dd<1){t+='\n[시간 흐름 지침] '+gap+' 경과. 이전 장면을 그대로 이어가지 않는다. 직전 감정 흐름을 읽고 '+personaName+'답게 현재 상태로 시작할 것.';}
+  else{t+='\n[시간 흐름 지침] '+gap+' 경과. 장면은 완전히 끊겼다고 간주. 직전 분위기(다정/냉랭 등)를 유지한 채 '+personaName+'답게 현재 상태를 새롭게 설정할 것. 이전 장면을 그대로 이어가지 않는다.';}
+  return t;
+}
+function buildSys(p){
+  let s=(p.adult?CONTENT_NOTICE:'')+`당신은 ${p.name}입니다.\n\n`+p.systemPrompt;
+  s+='\n\n'+(STYLE_GUIDE[p.style]||STYLE_GUIDE.novel);
+  s+='\n\n[핵심 규칙]\n항상 '+p.name+'으로만 말할 것. AI·언어모델·시스템이라는 메타 언급은 절대 하지 않을 것.';
+  if(userAlias)s+=`\n상대방을 "${userAlias}"라고 부를 것.`;
+  const curSum=summaries.length?summaries[summaries.length-1]:null;
+  if(curSum)s+='\n\n[이전 대화 요약 — 맥락으로 참고할 것]\n'+curSum.content;
+  if(Object.keys(mems).length)s+='\n\n[기억하는 것들]\n'+Object.entries(mems).map(([k,v])=>'- '+k+': '+v).join('\n');
+  s+='\n\n[현재 시간 정보]\n'+getTC(p.name);
+  return s;
+}
+
+/* ══════════════════════ Provider API 호출 (스트리밍) ══════════════════════ */
+async function callClaudeStream(am,img,sys,model,key,onDelta){
+  const ctrl=new AbortController();
+  const msgs2=am.map((m,i)=>{
+    if(i===am.length-1&&img&&m.role==='user'){
+      return{role:'user',content:[{type:'image',source:{type:'base64',media_type:img.mime,data:img.b64}},{type:'text',text:m.content}]};
+    }
+    return{role:m.role,content:m.content};
+  });
+  const r=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json','x-api-key':key,'anthropic-version':'2023-06-01'},body:JSON.stringify({model:model,max_tokens:1500,stream:true,system:sys,messages:msgs2}),signal:ctrl.signal});
+  if(!r.ok){const d=await r.json().catch(()=>({}));throw new Error('Claude: '+(d.error?.message||r.status));}
+  const reader=r.body.getReader(),decoder=new TextDecoder();
+  let acc='',buf='';
+  try{
+    outer:while(true){
+      const{done,value}=await reader.read();
+      if(done)break;
+      buf+=decoder.decode(value,{stream:true});
+      const lines=buf.split('\n');buf=lines.pop();
+      for(const line of lines){
+        if(!line.startsWith('data:'))continue;
+        const data=line.slice(5).trim();
+        if(data==='[DONE]')break outer;
+        try{
+          const ev=JSON.parse(data);
+          if(ev.type==='content_block_delta'&&ev.delta?.type==='text_delta'){acc+=ev.delta.text;if(onDelta(acc,ctrl))break outer;}
+        }catch(e){}
+      }
+    }
+  }catch(e){if(e.name!=='AbortError')throw e;}
+  return acc;
+}
+async function callGeminiStream(am,img,sys,model,key,onDelta){
+  const ctrl=new AbortController();
+  const gm=am.map((m,i)=>{
+    const role=m.role==='assistant'?'model':'user';
+    if(i===am.length-1&&img&&m.role==='user'){return{role,parts:[{inline_data:{mime_type:img.mime,data:img.b64}},{text:m.content}]};}
+    return{role,parts:[{text:m.content}]};
+  });
+  const r=await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:streamGenerateContent?key=${key}`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({system_instruction:{parts:[{text:sys}]},contents:gm,generationConfig:{maxOutputTokens:1500,temperature:0.9},safetySettings:[{category:'HARM_CATEGORY_SEXUALLY_EXPLICIT',threshold:'BLOCK_NONE'},{category:'HARM_CATEGORY_HATE_SPEECH',threshold:'BLOCK_NONE'},{category:'HARM_CATEGORY_HARASSMENT',threshold:'BLOCK_NONE'},{category:'HARM_CATEGORY_DANGEROUS_CONTENT',threshold:'BLOCK_NONE'}]}),signal:ctrl.signal});
+  if(!r.ok){const d=await r.json().catch(()=>({}));throw new Error('Gemini: '+(d.error?.message||r.status));}
+  const reader=r.body.getReader(),decoder=new TextDecoder();
+  let acc='',buf='',regexPos=0;
+  const textRe=/"text":\s*"((?:[^"\\]|\\.)*)"/g;
+  try{
+    outer:while(true){
+      const{done,value}=await reader.read();
+      if(done)break;
+      buf+=decoder.decode(value,{stream:true});
+      textRe.lastIndex=regexPos;
+      let match;
+      while((match=textRe.exec(buf))!==null){
+        regexPos=textRe.lastIndex;
+        const txt=match[1].replace(/\\n/g,'\n').replace(/\\r/g,'\r').replace(/\\t/g,'\t').replace(/\\"/g,'"').replace(/\\\\/g,'\\');
+        acc+=txt;
+        if(onDelta(acc,ctrl)){break outer;}
+      }
+    }
+  }catch(e){if(e.name!=='AbortError')throw e;}
+  return acc;
+}
+async function callOpenAIStream(am,img,sys,model,key,onDelta){
+  const ctrl=new AbortController();
+  const msgs2=am.map((m,i)=>{
+    if(i===am.length-1&&img&&m.role==='user'){
+      return{role:'user',content:[{type:'text',text:m.content},{type:'image_url',image_url:{url:`data:${img.mime};base64,${img.b64}`}}]};
+    }
+    return{role:m.role,content:m.content};
+  });
+  const r=await fetch('https://api.openai.com/v1/chat/completions',{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+key},body:JSON.stringify({model,stream:true,max_tokens:1500,messages:[{role:'system',content:sys},...msgs2]}),signal:ctrl.signal});
+  if(!r.ok){const d=await r.json().catch(()=>({}));throw new Error('ChatGPT: '+(d.error?.message||r.status));}
+  const reader=r.body.getReader(),decoder=new TextDecoder();
+  let acc='',buf='';
+  try{
+    outer:while(true){
+      const{done,value}=await reader.read();
+      if(done)break;
+      buf+=decoder.decode(value,{stream:true});
+      const lines=buf.split('\n');buf=lines.pop();
+      for(const line of lines){
+        if(!line.startsWith('data:'))continue;
+        const data=line.slice(5).trim();
+        if(data==='[DONE]')break outer;
+        try{
+          const ev=JSON.parse(data);
+          const delta=ev.choices?.[0]?.delta?.content;
+          if(delta){acc+=delta;if(onDelta(acc,ctrl)){break outer;}}
+        }catch(e){}
+      }
+    }
+  }catch(e){if(e.name!=='AbortError')throw e;}
+  return acc;
+}
+async function callNonStream(provider,model,key,sys,am){
+  if(provider==='claude'){
+    const r=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json','x-api-key':key,'anthropic-version':'2023-06-01'},body:JSON.stringify({model,max_tokens:1500,system:sys,messages:am})});
+    const d=await r.json();if(d.error)throw new Error('Claude: '+d.error.message);return d.content?.[0]?.text||'';
+  }
+  if(provider==='openai'){
+    const r=await fetch('https://api.openai.com/v1/chat/completions',{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+key},body:JSON.stringify({model,max_tokens:1500,messages:[{role:'system',content:sys},...am]})});
+    const d=await r.json();if(d.error)throw new Error('ChatGPT: '+d.error.message);return d.choices?.[0]?.message?.content||'';
+  }
+  const gm=am.map(m=>({role:m.role==='assistant'?'model':'user',parts:[{text:m.content}]}));
+  const r=await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${key}`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({system_instruction:{parts:[{text:sys}]},contents:gm,generationConfig:{maxOutputTokens:1500,temperature:0.9}})});
+  const d=await r.json();if(d.error)throw new Error('Gemini: '+d.error.message);
+  return d.candidates?.[0]?.content?.parts?.[0]?.text||'';
+}
+async function smallCall(prompt,maxTokens){
+  const order=[resolveProvider(personas.find(x=>x.id===activePersonaId)||{}),'claude','openai','gemini'];
+  for(const provider of order){
+    const key=apiKeys[provider];
+    if(!key)continue;
+    const model=modelPrefs[provider]||DEFAULT_MODELS[provider];
+    try{
+      if(provider==='gemini'){
+        const r=await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${key}`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({contents:[{role:'user',parts:[{text:prompt}]}],generationConfig:{maxOutputTokens:maxTokens,temperature:0.3}})});
+        const d=await r.json();const txt=d.candidates?.[0]?.content?.parts?.[0]?.text;if(txt)return txt.trim();
+      }else if(provider==='claude'){
+        const r=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json','x-api-key':key,'anthropic-version':'2023-06-01'},body:JSON.stringify({model,max_tokens:maxTokens,messages:[{role:'user',content:prompt}]})});
+        const d=await r.json();const txt=d.content?.[0]?.text;if(txt)return txt.trim();
+      }else{
+        const r=await fetch('https://api.openai.com/v1/chat/completions',{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+key},body:JSON.stringify({model,max_tokens:maxTokens,messages:[{role:'user',content:prompt}]})});
+        const d=await r.json();const txt=d.choices?.[0]?.message?.content;if(txt)return txt.trim();
+      }
+    }catch(e){console.warn('[smallCall]',provider,e.message);}
+  }
+  return '';
+}
+
+/* ══════════════════════ 답변 생성 (스트리밍 + 이어쓰기) ══════════════════════ */
+async function getReplyStream(am,img,persona,liveBub){
+  const provider=resolveProvider(persona);
+  const key=apiKeys[provider];
+  if(!key)throw new Error(`${PROVIDER_LABEL[provider]} API 키가 없어요. 설정에서 등록해주세요.`);
+  const sys=buildSys(persona);
+  const model=resolveModel(persona,provider);
+  function onDelta(text,ctrl){
+    liveBub.textContent=fmtReply(text);
+    scrollChat();
+    const n=noSpLen(text);
+    if(n>=STREAM_TARGET&&atSentEnd(text)){ctrl.abort();return true;}
+    if(n>=STREAM_MAX){ctrl.abort();return true;}
+    return false;
+  }
+  let acc='';
+  try{
+    if(provider==='claude')acc=await callClaudeStream(am,img,sys,model,key,onDelta);
+    else if(provider==='openai')acc=await callOpenAIStream(am,img,sys,model,key,onDelta);
+    else acc=await callGeminiStream(am,img,sys,model,key,onDelta);
+  }catch(e){
+    if(e.name==='TypeError'){
+      acc=await callNonStream(provider,model,key,sys,am);
+      liveBub.textContent=fmtReply(acc);
+    }else throw e;
+  }
+  if(!acc){
+    acc=await callNonStream(provider,model,key,sys,am);
+    liveBub.textContent=fmtReply(acc);
+  }
+  if(!atSentEnd(acc.trimEnd())&&noSpLen(acc)>30){
+    acc=await continueStream(am,acc,persona,provider,model,key,sys,liveBub);
+  }
+  return acc;
+}
+async function continueStream(am,partial,persona,provider,model,key,sys,liveBub){
+  const CONT_MAX=150;
+  const contAm=[...am,{role:'assistant',content:partial}];
+  function onDelta(newAcc,ctrl){
+    const full=partial+newAcc;
+    liveBub.textContent=fmtReply(full);scrollChat();
+    if(atSentEnd(full)){ctrl.abort();return true;}
+    if(noSpLen(newAcc)>=CONT_MAX){ctrl.abort();return true;}
+    return false;
+  }
+  let extra='';
+  try{
+    if(provider==='claude')extra=await callClaudeStream(contAm,undefined,sys,model,key,onDelta);
+    else if(provider==='openai')extra=await callOpenAIStream(contAm,undefined,sys,model,key,onDelta);
+    else extra=await callGeminiStream(contAm,undefined,sys,model,key,onDelta);
+  }catch(e){}
+  return partial+extra;
+}
+
+/* ══════════════════════ 기억 추출 / 요약 압축 ══════════════════════ */
+async function extractMem(uMsg,aMsg,personaName){
+  if(!apiKeys.claude&&!apiKeys.openai&&!apiKeys.gemini)return;
+  const prompt=`다음은 사용자와 ${personaName}(AI 캐릭터) 사이의 롤플레이 대화다. 사용자에 대해 기억해둘 만한 정보를 최대 3개 추출해라.
+
+추출 대상 (적극적으로 찾을 것):
+- 사용자가 보인 감정 반응이나 특별한 태도 변화
+- 사용자가 먼저 한 행동이나 표현
+- 사용자의 취향·습관·개인 정보
+- 두 사람 사이 의미 있는 장면이나 대화
+
+사용자: "${uMsg}"
+${personaName}: "${aMsg}"
+
+JSON 배열로만 답할 것: [{"key":"항목명","value":"내용"}]
+없다면 [] 만. 다른 텍스트 절대 없이 JSON만 출력할 것.`;
+  const txt=await smallCall(prompt,400);
+  if(!txt)return;
+  let arr=extractJSON(txt);
+  if(arr===null){
+    const retry=await smallCall('아래 텍스트에서 JSON 배열 부분만 추출해서, 다른 말 없이 그 JSON만 출력해:\n\n'+txt,400);
+    arr=extractJSON(retry);
+  }
+  if(!Array.isArray(arr))return;
+  for(const it of arr){
+    if(it&&it.key&&it.value){
+      mems[it.key]=it.value;
+      await idbPut('memories',{personaId:activePersonaId,key:it.key,value:it.value});
+    }
+  }
+}
+async function compressMsgs(persona){
+  if(msgs.length<=40)return;
+  if(!apiKeys.claude&&!apiKeys.openai&&!apiKeys.gemini)return;
+  const old=msgs.slice(0,msgs.length-20),recent=msgs.slice(msgs.length-20);
+  const curSum=summaries.length?summaries[summaries.length-1]:null;
+  const newConv=old.map(m=>(m.role==='user'?'사용자: ':persona.name+': ')+m.content).join('\n');
+  const criteria=`
+
+[작성 기준]
+- 핵심 사건과 감정적 전환점
+- 사용자가 드러낸 약함·솔직함·변화
+- ${persona.name}이 보인 특별한 반응·행동
+- 현재 관계의 온도
+- 앞으로 이어질 감정적 맥락
+
+단순 사건 나열 금지. 감정 흐름이 살아있는 서사로. 6~9문장. 한국어로.`;
+  let prompt;
+  if(curSum)prompt=`[이전 요약]\n${curSum.content}\n\n[새 대화]\n${newConv}\n\n이전 요약과 새 대화를 합쳐 업데이트된 하나의 요약으로 만들어줘.`+criteria;
+  else prompt=`다음 대화를 요약해줘.\n\n[대화]\n${newConv}`+criteria;
+  const summary=await smallCall(prompt,1200);
+  if(!summary)return;
+  const now=Date.now();
+  const id=await idbPut('summaries',{personaId:activePersonaId,content:summary,coversFrom:old[0].time,coversTo:old[old.length-1].time,createdAt:now});
+  summaries.push({id,personaId:activePersonaId,content:summary,coversFrom:old[0].time,coversTo:old[old.length-1].time,createdAt:now});
+  while(summaries.length>5){const oldest=summaries.shift();if(oldest.id)await idbDelete('summaries',oldest.id);}
+  const toDelete=old.map(m=>m.id).filter(Boolean);
+  for(const id2 of toDelete)await idbDelete('messages',id2);
+  msgs=recent;
+  renderAllMsgs();
+}
+
+/* ══════════════════════ 메시지 렌더링 ══════════════════════ */
+function fmtReply(t){
+  return t.replace(/"\n([^"\n])/g,'"\n\n$1').replace(/([^"\n])\n"/g,'$1\n\n"');
+}
+function ft(ts){return new Intl.DateTimeFormat('ko-KR',{hour:'2-digit',minute:'2-digit',hour12:false}).format(new Date(ts));}
+function fd(ts){return new Intl.DateTimeFormat('ko-KR',{year:'numeric',month:'long',day:'numeric',weekday:'short'}).format(new Date(ts));}
+function sameDay(a,b){const da=new Date(a),db=new Date(b);return da.getFullYear()===db.getFullYear()&&da.getMonth()===db.getMonth()&&da.getDate()===db.getDate();}
+function scrollChat(){const c=document.getElementById('chat');c.scrollTop=c.scrollHeight;}
+
+function makeMsgWrap(role,content,time,idx,animate){
+  const p=personas.find(x=>x.id===activePersonaId);
+  const wrap=document.createElement('div');wrap.className='mwrap '+role+(animate?' manim':'');
+  const name=document.createElement('div');name.className='mname';name.textContent=role==='assistant'?(p?p.name:''):(userAlias||'나');
+  const bub=document.createElement('div');bub.className='bubble '+role;bub.textContent=role==='assistant'?fmtReply(content):content;
+  const t=document.createElement('div');t.className='mtime';t.textContent=time?ft(time):'';
+  wrap.appendChild(name);wrap.appendChild(bub);wrap.appendChild(t);
+  if(role==='user'||role==='assistant'){
+    const acts=document.createElement('div');acts.className='mactions';
+    if(role==='user'){
+      const eb=document.createElement('button');eb.className='mact';eb.title='수정';eb.innerHTML='✏️';
+      eb.onclick=()=>startEditMsg(idx,wrap,bub,acts);
+      acts.appendChild(eb);
+    }
+    if(role==='assistant'){
+      const rb=document.createElement('button');rb.className='mact';rb.title='다시 쓰기';rb.innerHTML='↺';
+      rb.onclick=()=>regenAt(idx);
+      acts.appendChild(rb);
+    }
+    const db2=document.createElement('button');db2.className='mact';db2.title='삭제';db2.innerHTML='🗑';
+    db2.onclick=()=>deleteMsgAt(idx);
+    acts.appendChild(db2);
+    wrap.appendChild(acts);
+  }
+  return wrap;
+}
+function startEditMsg(idx,wrap,bub,acts){
+  if(wrap.querySelector('.editta'))return;
+  acts.style.display='none';
+  const ta=document.createElement('textarea');ta.className='editta';ta.value=msgs[idx].content;
+  const ea=document.createElement('div');ea.className='editacts';
+  const sv=document.createElement('button');sv.className='editsave';sv.textContent='저장';
+  sv.onclick=async()=>{
+    const v=ta.value.trim();if(!v)return;
+    msgs[idx].content=v;bub.textContent=v;
+    if(msgs[idx].id)await idbPut('messages',msgs[idx]);
+    wrap.removeChild(ta);wrap.removeChild(ea);acts.style.display='';
+  };
+  const cv=document.createElement('button');cv.className='editcancel';cv.textContent='취소';
+  cv.onclick=()=>{wrap.removeChild(ta);wrap.removeChild(ea);acts.style.display='';};
+  ea.appendChild(sv);ea.appendChild(cv);wrap.appendChild(ta);wrap.appendChild(ea);ta.focus();
+}
+async function deleteMsgAt(idx){
+  showConf('메시지를 삭제할까요?',async()=>{
+    const m=msgs[idx];
+    if(m.id)await idbDelete('messages',m.id);
+    msgs.splice(idx,1);
+    renderAllMsgs();
+  });
+}
+function renderAllMsgs(){
+  const chat=document.getElementById('chat');
+  chat.innerHTML='';
+  if(msgs.length===0){
+    const e=document.createElement('div');e.className='empty';e.id='chatEmpty';e.textContent='대화를 시작해보세요.';
+    chat.appendChild(e);return;
+  }
+  msgs.forEach((m,i)=>{
+    if(i===0||!sameDay(msgs[i-1].time,m.time)){const dd=document.createElement('div');dd.className='datediv';dd.textContent=fd(m.time);chat.appendChild(dd);}
+    chat.appendChild(makeMsgWrap(m.role,m.content,m.time,i));
+  });
+  scrollChat();
+}
+function showLiveBubble(){
+  removeTyping();
+  const chat=document.getElementById('chat');
+  const p=personas.find(x=>x.id===activePersonaId);
+  const wrap=document.createElement('div');wrap.id='livewrap';wrap.className='mwrap assistant';
+  const name=document.createElement('div');name.className='mname';name.textContent=p?p.name:'';
+  const bub=document.createElement('div');bub.className='bubble assistant';bub.textContent='...';
+  const t=document.createElement('div');t.className='mtime';
+  wrap.appendChild(name);wrap.appendChild(bub);wrap.appendChild(t);
+  chat.appendChild(wrap);scrollChat();
+  return{wrap,bub,t};
+}
+function removeLiveBubble(){const el=document.getElementById('livewrap');if(el)el.remove();}
+function removeTyping(){const t=document.getElementById('tw');if(t)t.remove();}
+function addAssistantActions(wrap,idx){
+  const acts=document.createElement('div');acts.className='mactions';
+  const rb=document.createElement('button');rb.className='mact';rb.title='다시 쓰기';rb.innerHTML='↺';rb.onclick=()=>regenAt(idx);
+  acts.appendChild(rb);
+  const db2=document.createElement('button');db2.className='mact';db2.title='삭제';db2.innerHTML='🗑';db2.onclick=()=>deleteMsgAt(idx);
+  acts.appendChild(db2);
+  wrap.appendChild(acts);
+}
+
+/* ══════════════════════ 이미지 첨부 ══════════════════════ */
+function onImgSelect(input){
+  const file=input.files[0];if(!file)return;
+  const reader=new FileReader();
+  reader.onload=e=>{
+    const dataUrl=e.target.result;
+    const b64=dataUrl.split(',')[1];
+    const mime=file.type||'image/jpeg';
+    pendingImg={b64,mime,dataUrl};
+    document.getElementById('imgthumb').src=dataUrl;
+    document.getElementById('imgpreview').style.display='block';
+  };
+  reader.readAsDataURL(file);
+  input.value='';
+}
+function clearImg(){pendingImg=null;document.getElementById('imgpreview').style.display='none';document.getElementById('imgthumb').src='';}
+
+/* ══════════════════════ 전송 / 재생성 ══════════════════════ */
+async function send(){
+  const p=personas.find(x=>x.id===activePersonaId);if(!p)return;
+  const inp=document.getElementById('minput');
+  const content=inp.value.trim();
+  if((!content&&!pendingImg)||loading)return;
+  loading=true;inp.value='';inp.style.height='auto';
+  document.getElementById('sbtn').disabled=true;
+  const img=pendingImg;clearImg();
+  const now=Date.now();
+  addDOMUser(content,img,now);
+  const uid=await idbPut('messages',{personaId:activePersonaId,role:'user',content:content||(img?'[이미지]':''),time:now});
+  msgs.push({id:uid,personaId:activePersonaId,role:'user',content:content||(img?'[이미지]':''),time:now});
+  const{wrap:liveWrap,bub:liveBub,t:liveT}=showLiveBubble();
+  try{
+    const am=msgs.slice(-40).map(m=>({role:m.role,content:m.content}));
+    const rawReply=await getReplyStream(am,img,p,liveBub);
+    const reply=trimToSentence(rawReply);
+    const rnow=Date.now();
+    liveBub.textContent=fmtReply(reply);liveT.textContent=ft(rnow);liveWrap.removeAttribute('id');
+    const rid=await idbPut('messages',{personaId:activePersonaId,role:'assistant',content:reply,time:rnow});
+    const newIdx=msgs.length;
+    msgs.push({id:rid,personaId:activePersonaId,role:'assistant',content:reply,time:rnow});
+    addAssistantActions(liveWrap,newIdx);
+    await touchPersonaPreview(reply);
+    extractMem(content||'[이미지 전송]',reply,p.name);
+    if(msgs.length>40)compressMsgs(p);
+  }catch(e){removeLiveBubble();addDOMError(e.message);}
+  loading=false;document.getElementById('sbtn').disabled=false;
+}
+function addDOMUser(content,img,time){
+  const chat=document.getElementById('chat');
+  const empty=document.getElementById('chatEmpty');if(empty)empty.remove();
+  const prevTime=msgs.length>0?msgs[msgs.length-1]?.time:null;
+  if(!prevTime||!sameDay(prevTime,time)){const dd=document.createElement('div');dd.className='datediv';dd.textContent=fd(time);chat.appendChild(dd);}
+  const wrap=document.createElement('div');wrap.className='mwrap user manim';
+  const name=document.createElement('div');name.className='mname';name.textContent=userAlias||'나';
+  const bub=document.createElement('div');bub.className='bubble user';
+  if(img){const im=document.createElement('img');im.src=img.dataUrl;im.style.cssText='max-width:200px;border-radius:8px;margin-bottom:4px;display:block';bub.appendChild(im);}
+  if(content){const tx=document.createElement('span');tx.textContent=content;bub.appendChild(tx);}
+  const t=document.createElement('div');t.className='mtime';t.textContent=ft(time);
+  wrap.appendChild(name);wrap.appendChild(bub);wrap.appendChild(t);
+  chat.appendChild(wrap);scrollChat();
+}
+function addDOMError(msg){
+  const chat=document.getElementById('chat');
+  const wrap=document.createElement('div');wrap.className='mwrap error manim';
+  const bub=document.createElement('div');bub.className='bubble error';bub.textContent='⚠ '+msg;
+  wrap.appendChild(bub);chat.appendChild(wrap);scrollChat();
+}
+async function regenAt(idx){
+  if(loading)return;
+  const p=personas.find(x=>x.id===activePersonaId);if(!p)return;
+  const m=msgs[idx];
+  if(m.id)await idbDelete('messages',m.id);
+  msgs.splice(idx,1);
+  renderAllMsgs();
+  loading=true;document.getElementById('sbtn').disabled=true;
+  const{wrap:liveWrap,bub:liveBub,t:liveT}=showLiveBubble();
+  try{
+    const am=msgs.slice(-40).map(m2=>({role:m2.role,content:m2.content}));
+    const rawReply=await getReplyStream(am,undefined,p,liveBub);
+    const reply=trimToSentence(rawReply);
+    const now=Date.now();
+    liveBub.textContent=fmtReply(reply);liveT.textContent=ft(now);liveWrap.removeAttribute('id');
+    const rid=await idbPut('messages',{personaId:activePersonaId,role:'assistant',content:reply,time:now});
+    const newIdx=msgs.length;
+    msgs.push({id:rid,personaId:activePersonaId,role:'assistant',content:reply,time:now});
+    addAssistantActions(liveWrap,newIdx);
+    await touchPersonaPreview(reply);
+  }catch(e){removeLiveBubble();addDOMError(e.message);}
+  loading=false;document.getElementById('sbtn').disabled=false;
+}
+async function maybeFirstGreet(p){
+  if(loading||msgs.length===0)return;
+  const last=msgs[msgs.length-1];
+  const dh=(Date.now()-last.time)/3600000;
+  if(dh<0.5)return;
+  const dm=Math.round(dh*60);
+  const gap=dh<1?dm+'분':dh<24?Math.floor(dh)+'시간':Math.floor(dh/24)+'일';
+  let greetCtx;
+  if(dh<3)greetCtx=`사용자가 ${gap} 만에 돌아왔다. 직전 대화의 감정 흐름을 유지하며 짧게 먼저 한마디 건넬 것. "어디 있었어?" 같은 판에 박힌 질문은 금지.`;
+  else if(dh<24)greetCtx=`사용자가 ${gap} 만에 돌아왔다. 이전 장면을 그대로 이어가지 않는다. 직전 분위기를 읽고 그에 맞는 현재 상태로 짧게 먼저 한마디.`;
+  else greetCtx=`사용자가 ${gap} 만에 돌아왔다. 장면은 완전히 끊겼다. 직전 분위기를 유지한 채 짧게 먼저 한마디 건넬 것.`;
+  loading=true;document.getElementById('sbtn').disabled=true;
+  const{wrap:liveWrap,bub:liveBub,t:liveT}=showLiveBubble();
+  try{
+    const am=[...msgs.slice(-10).map(m=>({role:m.role,content:m.content})),{role:'user',content:greetCtx}];
+    const rawReply=await getReplyStream(am,undefined,p,liveBub);
+    const reply=trimToSentence(rawReply);
+    const now=Date.now();
+    liveBub.textContent=fmtReply(reply);liveT.textContent=ft(now);liveWrap.removeAttribute('id');
+    const rid=await idbPut('messages',{personaId:activePersonaId,role:'assistant',content:reply,time:now});
+    const newIdx=msgs.length;
+    msgs.push({id:rid,personaId:activePersonaId,role:'assistant',content:reply,time:now});
+    addAssistantActions(liveWrap,newIdx);
+    await touchPersonaPreview(reply);
+  }catch(e){removeLiveBubble();}
+  loading=false;document.getElementById('sbtn').disabled=false;
+}
+
+/* ══════════════════════ 유저노트 / 장기기억 패널 ══════════════════════ */
+function openMem(){renderMemList();document.getElementById('memOv').style.display='flex';}
+function closeMem(){document.getElementById('memOv').style.display='none';}
+function openSum(){renderSumList();document.getElementById('sumOv').style.display='flex';}
+function closeSum(){document.getElementById('sumOv').style.display='none';}
+
+function renderMemList(){
+  const list=document.getElementById('memlist');list.innerHTML='';
+  const addRow=document.createElement('div');addRow.style.cssText='display:flex;justify-content:space-between;align-items:center;margin-bottom:10px';
+  const addLabel=document.createElement('span');addLabel.style.cssText='font-size:11px;color:#555';addLabel.textContent='자동 수집된 정보';
+  const addBtn=document.createElement('button');addBtn.className='medbtn';addBtn.textContent='+ 직접 추가';
+  addRow.appendChild(addLabel);addRow.appendChild(addBtn);list.appendChild(addRow);
+  addBtn.onclick=()=>{
+    const form=document.createElement('div');form.className='mitem';form.style.marginBottom='10px';
+    const keyInp=document.createElement('input');keyInp.placeholder='항목 이름';keyInp.style.cssText='width:100%;background:#0a0a0a;border:1px solid #444;border-radius:6px;padding:6px 10px;color:#fff;font-size:12px;outline:none;margin-bottom:6px';
+    const valTa=document.createElement('textarea');valTa.className='medta';valTa.placeholder='내용';valTa.style.minHeight='50px';
+    const ea=document.createElement('div');ea.className='medacts';
+    const sv=document.createElement('button');sv.className='medsave';sv.textContent='저장';
+    sv.onclick=async()=>{
+      const k=keyInp.value.trim(),v=valTa.value.trim();if(!k||!v)return;
+      mems[k]=v;await idbPut('memories',{personaId:activePersonaId,key:k,value:v});renderMemList();
+    };
+    const cv=document.createElement('button');cv.className='medcancel';cv.textContent='취소';cv.onclick=()=>renderMemList();
+    ea.appendChild(sv);ea.appendChild(cv);
+    form.appendChild(keyInp);form.appendChild(valTa);form.appendChild(ea);
+    list.insertBefore(form,addRow.nextSibling);keyInp.focus();
+  };
+  const keys=Object.keys(mems);
+  if(!keys.length){
+    const em=document.createElement('div');em.style.cssText='color:#666;font-size:13px;text-align:center;padding:20px 0';em.textContent='아직 수집된 정보가 없어.';list.appendChild(em);return;
+  }
+  keys.forEach(k=>{
+    const item=document.createElement('div');item.className='mitem';
+    const acts=document.createElement('div');acts.className='macts';
+    const kd=document.createElement('div');kd.className='mkey';kd.textContent=k;
+    const bw=document.createElement('div');bw.style.cssText='display:flex;gap:6px';
+    const eb=document.createElement('button');eb.className='medbtn';eb.textContent='수정';
+    const db2=document.createElement('button');db2.className='mdelbtn';db2.textContent='삭제';
+    db2.onclick=async()=>{
+      delete mems[k];
+      const all=await idbGetAll('memories','personaId',IDBKeyRange.only(activePersonaId));
+      const target=all.find(m=>m.key===k);if(target)await idbDelete('memories',target.id);
+      renderMemList();
+    };
+    bw.appendChild(eb);bw.appendChild(db2);acts.appendChild(kd);acts.appendChild(bw);item.appendChild(acts);
+    const vd=document.createElement('div');vd.className='mval';vd.textContent=mems[k];item.appendChild(vd);
+    eb.onclick=()=>{
+      if(item.querySelector('.medta'))return;
+      vd.style.display='none';
+      const ta=document.createElement('textarea');ta.className='medta';ta.value=mems[k];
+      const ea=document.createElement('div');ea.className='medacts';
+      const sv=document.createElement('button');sv.className='medsave';sv.textContent='저장';
+      sv.onclick=async()=>{
+        mems[k]=ta.value;
+        const all=await idbGetAll('memories','personaId',IDBKeyRange.only(activePersonaId));
+        const target=all.find(m=>m.key===k);if(target){target.value=ta.value;await idbPut('memories',target);}
+        renderMemList();
+      };
+      const cv=document.createElement('button');cv.className='medcancel';cv.textContent='취소';cv.onclick=()=>renderMemList();
+      ea.appendChild(sv);ea.appendChild(cv);item.appendChild(ta);item.appendChild(ea);
+    };
+    list.appendChild(item);
+  });
+}
+function makeSumItem(s,dimmed){
+  const from=s.coversFrom?new Date(s.coversFrom).toLocaleDateString('ko-KR'):'';
+  const to=s.coversTo?new Date(s.coversTo).toLocaleDateString('ko-KR'):'';
+  const item=document.createElement('div');item.className='mitem';
+  if(dimmed)item.style.opacity='0.6';
+  const acts=document.createElement('div');acts.className='macts';
+  const kd=document.createElement('div');kd.className='mkey';kd.textContent=from+(from&&to&&from!==to?' ~ '+to:'');
+  const bw=document.createElement('div');bw.style.cssText='display:flex;gap:6px';
+  const eb=document.createElement('button');eb.className='medbtn';eb.textContent='수정';
+  const db2=document.createElement('button');db2.className='mdelbtn';db2.textContent='삭제';
+  db2.onclick=async()=>{await idbDelete('summaries',s.id);summaries=summaries.filter(x=>x.id!==s.id);renderSumList();};
+  bw.appendChild(eb);bw.appendChild(db2);acts.appendChild(kd);acts.appendChild(bw);item.appendChild(acts);
+  const vd=document.createElement('div');vd.className='mval';vd.textContent=s.content;vd.style.fontSize='12px';item.appendChild(vd);
+  eb.onclick=()=>{
+    if(item.querySelector('.medta'))return;
+    const ta=document.createElement('textarea');ta.className='medta';ta.value=s.content;
+    const ea=document.createElement('div');ea.className='medacts';
+    const sv=document.createElement('button');sv.className='medsave';sv.textContent='저장';
+    sv.onclick=async()=>{s.content=ta.value;await idbPut('summaries',s);renderSumList();};
+    const cv=document.createElement('button');cv.className='medcancel';cv.textContent='취소';cv.onclick=()=>renderSumList();
+    ea.appendChild(sv);ea.appendChild(cv);item.appendChild(ta);item.appendChild(ea);
+  };
+  return item;
+}
+function renderSumList(){
+  const list=document.getElementById('sumlist');list.innerHTML='';
+  if(!summaries.length){
+    const em=document.createElement('div');em.style.cssText='color:#666;font-size:13px;text-align:center;padding:20px 0';em.textContent='아직 요약된 내용이 없어. 40턴 이후 자동 생성돼.';list.appendChild(em);return;
+  }
+  const curIdx=summaries.length-1;
+  const curLabel=document.createElement('div');curLabel.style.cssText='font-size:11px;color:#7a9fd4;margin-bottom:8px';curLabel.textContent='현재 요약';
+  list.appendChild(curLabel);
+  list.appendChild(makeSumItem(summaries[curIdx],false));
+  const hist=summaries.slice(0,-1);
+  if(hist.length){
+    const hl=document.createElement('div');hl.style.cssText='font-size:11px;color:#555;margin:14px 0 6px';hl.textContent='이전 버전 ('+hist.length+'개)';
+    list.appendChild(hl);
+    hist.forEach(s=>list.appendChild(makeSumItem(s,true)));
+  }
+}
+
+/* ══════════════════════ 설정 ══════════════════════ */
+function openSettings(){
+  document.getElementById('set-alias').value=userAlias;
+  document.getElementById('set-defprov').value=defaultProvider;
+  document.getElementById('key-claude').value=apiKeys.claude?'••••••••':'';
+  document.getElementById('key-openai').value=apiKeys.openai?'••••••••':'';
+  document.getElementById('key-gemini').value=apiKeys.gemini?'••••••••':'';
+  document.getElementById('settingsOv').style.display='flex';
+}
+function closeSettings(){document.getElementById('settingsOv').style.display='none';}
+async function saveAlias(){
+  userAlias=document.getElementById('set-alias').value.trim();
+  await idbPut('settings',{key:'userAlias',value:userAlias});
+  showToastLite('저장됐어');
+}
+async function saveDefaultProvider(v){
+  defaultProvider=v;
+  await idbPut('settings',{key:'defaultProvider',value:v});
+}
+async function saveKey(provider){
+  const el=document.getElementById('key-'+provider);
+  const v=el.value.trim();
+  if(!v||v.startsWith('••'))return;
+  apiKeys[provider]=v;
+  await idbPut('settings',{key:'apiKeys',value:apiKeys});
+  el.value='••••••••';
+  showToastLite(PROVIDER_LABEL[provider]+' 키 저장됨');
+}
+function showToastLite(msg){
+  const t=document.createElement('div');
+  t.textContent=msg;
+  t.style.cssText='position:fixed;left:50%;bottom:90px;transform:translateX(-50%);background:#1f2023;border:1px solid #333;color:#fff;padding:8px 16px;border-radius:20px;font-size:12px;z-index:400';
+  document.body.appendChild(t);
+  setTimeout(()=>t.remove(),1800);
+}
+
+/* ══════════════════════ 백업 / 복원 ══════════════════════ */
+function dlFile(content,filename,type){
+  const blob=new Blob([content],{type});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');a.href=url;a.download=filename;a.click();
+  setTimeout(()=>URL.revokeObjectURL(url),1000);
+}
+async function doExport(){document.getElementById('expMod').style.display='flex';}
+async function doExportJSON(){
+  const[allP,allM,allMem,allS]=await Promise.all([
+    idbGetAll('personas'),idbGetAll('messages'),idbGetAll('memories'),idbGetAll('summaries')
+  ]);
+  const data={exported_at:new Date().toISOString(),version:1,personas:allP,messages:allM,memories:allMem,summaries:allS,settings:{apiKeys,modelPrefs,userAlias,defaultProvider}};
+  dlFile(JSON.stringify(data,null,2),'페르소나챗_백업_'+new Date().toISOString().slice(0,10)+'.json','application/json');
+  document.getElementById('expMod').style.display='none';
+}
+function openImport(){_impData=null;document.getElementById('impstatus').textContent='';document.getElementById('impMod').style.display='flex';}
+function closeImport(){_impData=null;document.getElementById('impMod').style.display='none';}
+function onImpFile(input){
+  const file=input.files[0];if(!file)return;
+  const reader=new FileReader();
+  reader.onload=async e=>{
+    try{
+      _impData=JSON.parse(e.target.result);
+      const st=document.getElementById('impstatus');
+      st.textContent='✓ '+file.name+' — 페르소나 '+(_impData.personas?.length||0)+'개, 메시지 '+(_impData.messages?.length||0)+'개';
+      st.style.color='#7a9fd4';
+      await doImport();
+    }catch(err){
+      document.getElementById('impstatus').textContent='❌ 올바른 JSON 파일이 아니야.';
+      document.getElementById('impstatus').style.color='#8b4040';
+      _impData=null;
+    }
+  };
+  reader.readAsText(file);input.value='';
+}
+async function doImport(){
+  if(!_impData)return;
+  const p=_impData;
+  if(_impMode==='replace'){
+    await Promise.all([idbClearAll('personas'),idbClearAll('messages'),idbClearAll('memories'),idbClearAll('summaries')]);
+  }
+  const idMap={};
+  for(const per of (p.personas||[])){
+    let newId=per.id;
+    if(_impMode==='merge'&&personas.find(x=>x.id===per.id))newId=genId('p');
+    idMap[per.id]=newId;
+    await idbPut('personas',{...per,id:newId});
+  }
+  for(const m of (p.messages||[])){
+    const pid=idMap[m.personaId]||m.personaId;
+    const rec={personaId:pid,role:m.role,content:m.content,time:m.time};
+    await idbPut('messages',rec);
+  }
+  for(const mm of (p.memories||[])){
+    const pid=idMap[mm.personaId]||mm.personaId;
+    await idbPut('memories',{personaId:pid,key:mm.key,value:mm.value});
+  }
+  for(const s of (p.summaries||[])){
+    const pid=idMap[s.personaId]||s.personaId;
+    await idbPut('summaries',{personaId:pid,content:s.content,coversFrom:s.coversFrom,coversTo:s.coversTo,createdAt:s.createdAt});
+  }
+  if(p.settings){
+    if(p.settings.apiKeys){apiKeys=Object.assign(apiKeys,p.settings.apiKeys);await idbPut('settings',{key:'apiKeys',value:apiKeys});}
+    if(p.settings.modelPrefs){modelPrefs=Object.assign(modelPrefs,p.settings.modelPrefs);await idbPut('settings',{key:'modelPrefs',value:modelPrefs});}
+    if(p.settings.userAlias){userAlias=p.settings.userAlias;await idbPut('settings',{key:'userAlias',value:userAlias});}
+    if(p.settings.defaultProvider){defaultProvider=p.settings.defaultProvider;await idbPut('settings',{key:'defaultProvider',value:defaultProvider});}
+  }
+  await loadPersonas();
+  renderHome();
+  closeImport();
+  document.getElementById('keysetup').classList.remove('active');
+  showView('home');
+  alert('복원 완료!');
+}
+function doResetAll(){
+  showConf('모든 페르소나·대화·기억·API 키가 영구히 삭제돼. 정말 초기화할까?',async()=>{
+    await Promise.all([idbClearAll('personas'),idbClearAll('messages'),idbClearAll('memories'),idbClearAll('summaries'),idbClearAll('settings')]);
+    personas=[];msgs=[];mems={};summaries=[];apiKeys={claude:'',openai:'',gemini:''};userAlias='';
+    location.reload();
+  });
+}
+
+/* ══════════════════════ 입력창 오토리사이즈 & 초기화 ══════════════════════ */
+window.addEventListener('DOMContentLoaded',()=>{
+  const inp=document.getElementById('minput');
+  inp.addEventListener('input',function(){this.style.height='auto';this.style.height=Math.min(this.scrollHeight,120)+'px';});
+  inp.addEventListener('keydown',function(e){if(e.key==='Enter'&&e.shiftKey){e.preventDefault();send();}});
+  document.addEventListener('visibilitychange',()=>{
+    if(document.visibilityState==='visible'&&activePersonaId){
+      const p=personas.find(x=>x.id===activePersonaId);
+      if(p)maybeFirstGreet(p);
+    }
+  });
+  boot();
+});
+</script>
+</body>
+</html>
