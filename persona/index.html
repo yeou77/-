@@ -133,6 +133,38 @@ input:checked+.slider:before{transform:translateX(16px)}
 #sbtn:disabled{background:#333;cursor:not-allowed}
 #imgbtn{width:28px;height:28px;border-radius:50%;background:none;border:1px solid #444;color:#888;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:14px}
 
+/* ── 채팅 화면 화이트 테마 (페르소나별 선택) ── */
+#chatscreen.light-theme #header{background:#fff;border-bottom-color:#e5e2da}
+#chatscreen.light-theme #hname{color:#1a1a1a}
+#chatscreen.light-theme #hstatus{color:#888}
+#chatscreen.light-theme #header .iconbtn{border-color:#ddd;color:#777}
+#chatscreen.light-theme #header .iconbtn:hover{border-color:#999;color:#333}
+#chatscreen.light-theme .mbadge{background:#f4f2ec;border-color:#ddd;color:#777}
+#chatscreen.light-theme #chat{background:#fdfcf9}
+#chatscreen.light-theme .empty{color:#aaa}
+#chatscreen.light-theme .datediv{color:#999}
+#chatscreen.light-theme .mname{color:#999}
+#chatscreen.light-theme .bubble.user{background:#e7ecfb;border-color:#ccd6f2;color:#1a1a2e}
+#chatscreen.light-theme .bubble.assistant{background:#f6f2e8;border-color:#e6dfcf;color:#2a2620}
+#chatscreen.light-theme .bubble.error{background:#fdf0f0;border-color:#f0c9c9;color:#a94442}
+#chatscreen.light-theme .mtime{color:#aaa}
+#chatscreen.light-theme .tbubble{background:#f0efe9;border-color:#e0ddd3}
+#chatscreen.light-theme .dot{background:#999}
+#chatscreen.light-theme .mact{border-color:#ddd;color:#999}
+#chatscreen.light-theme .mact:hover{border-color:#999;color:#333}
+#chatscreen.light-theme .editta{background:#fff;border-color:#ccc;color:#1a1a1a}
+#chatscreen.light-theme .editcancel{border-color:#ccc;color:#777}
+#chatscreen.light-theme #iarea{background:#fff;border-top-color:#e5e2da}
+#chatscreen.light-theme #imgpreview img{border-color:#ccc}
+#chatscreen.light-theme #imgpreview .rmimg{background:#ddd;color:#333}
+#chatscreen.light-theme #irow{background:#f4f2ec;border-color:rgba(0,0,0,.12)}
+#chatscreen.light-theme #minput{color:#1a1a1a}
+#chatscreen.light-theme #minput::placeholder{color:#999}
+#chatscreen.light-theme #imgbtn{border-color:#ccc;color:#777}
+#chatscreen.light-theme #sbtn{background:#1a1a1a}
+#chatscreen.light-theme #sbtn svg path{fill:#fff}
+#chatscreen.light-theme #sbtn:disabled{background:#ccc}
+
 /* ── 오버레이 / 패널 ── */
 .ov{position:fixed;inset:0;background:rgba(0,0,0,.8);display:flex;align-items:flex-end;z-index:100}
 .panel{background:#111;border-top:1px solid #333;width:100%;max-width:680px;margin:0 auto;padding:22px 20px 28px;border-radius:20px 20px 0 0;max-height:85vh;overflow-y:auto}
@@ -278,6 +310,12 @@ input:checked+.slider:before{transform:translateX(16px)}
       <button class="pbtn ghost" style="margin:0" onclick="clearPeBgImg()">배경 제거</button>
     </div>
     <input type="file" id="pe-bg-file" accept="image/*" style="display:none" onchange="onPeBgSelect(this)">
+
+    <label class="flabel">채팅 화면 테마</label>
+    <div class="row2" style="margin-bottom:10px">
+      <button type="button" class="pbtn" id="pe-theme-dark" style="margin:0" onclick="setPeTheme('dark')">다크</button>
+      <button type="button" class="pbtn" id="pe-theme-light" style="margin:0" onclick="setPeTheme('light')">화이트</button>
+    </div>
 
     <label class="flabel">캐릭터 설정 *</label>
     <textarea class="ktextarea" id="pe-prompt" style="min-height:220px" placeholder="예시 구조:
@@ -692,7 +730,15 @@ function resolveProvider(p){return (p.provider&&p.provider!=='default')?p.provid
 function resolveModel(p,provider){return p.model||modelPrefs[provider]||DEFAULT_MODELS[provider];}
 
 /* ══════════════════════ 페르소나 편집기 ══════════════════════ */
-let _editingId=null,_peAvatarImg=null,_peBgImg=null,_peBgIntensity=40;
+let _editingId=null,_peAvatarImg=null,_peBgImg=null,_peBgIntensity=40,_peTheme='dark';
+function setPeTheme(v){
+  _peTheme=v;
+  document.getElementById('pe-theme-dark').className='pbtn'+(v==='dark'?' primary':'');
+  document.getElementById('pe-theme-light').className='pbtn'+(v==='light'?' primary':'');
+}
+function applyChatTheme(p){
+  document.getElementById('chatscreen').classList.toggle('light-theme',p.theme==='light');
+}
 // 배경 강도(0~100)를 grayscale+brightness 필터로 변환. 0=거의 흑백+어두워서 배경이 안 보이는 느낌, 100=원본 그대로 선명.
 function bgFilterStyle(intensityPct){
   const t=Math.max(0,Math.min(100,intensityPct))/100;
@@ -716,6 +762,7 @@ function openEditor(id){
   _peBgImg=p?(p.bgImg||null):null;
   _peBgIntensity=p&&p.bgIntensity!==undefined?p.bgIntensity:40;
   document.getElementById('pe-bg-intensity').value=_peBgIntensity;
+  setPeTheme(p&&p.theme==='light'?'light':'dark');
   renderPeAvatarPreview();
   renderPeBgPreview();
   document.getElementById('editorMod').style.display='flex';
@@ -811,6 +858,7 @@ async function savePersona(){
   p.avatarImg=_peAvatarImg;
   p.bgImg=_peBgImg;
   p.bgIntensity=_peBgIntensity;
+  p.theme=_peTheme;
   p.systemPrompt=prompt;
   p.greeting=document.getElementById('pe-greeting').value.trim();
   p.style=document.getElementById('pe-style').value;
@@ -824,6 +872,7 @@ async function savePersona(){
     document.getElementById('hname').textContent=p.name;
     setAvatarEl(document.getElementById('avatar'),p);
     applyChatBg(p);
+    applyChatTheme(p);
     updateBadge(p);
   }
   if(isNew)openChat(p.id);
@@ -872,6 +921,7 @@ async function openChat(id){
   document.getElementById('hname').textContent=p.name;
   setAvatarEl(document.getElementById('avatar'),p);
   applyChatBg(p);
+  applyChatTheme(p);
   document.getElementById('hstatus').textContent='';
   updateBadge(p);
   const [ms,mm,ss]=await Promise.all([
