@@ -1002,6 +1002,22 @@ function buildSys(p){
 }
 
 /* ══════════════════════ Provider API 호출 (스트리밍) ══════════════════════ */
+// 429(요청량 초과)는 거의 항상 일시적이라, 바로 에러로 띄우기 전에 잠깐 쉬었다 몇 번 재시도한다.
+function apiErrMsg(label,d,status){
+  if(status===429)return label+': 요청이 너무 많아요(429). 잠깐 쉬었다가 다시 시도해줘.';
+  return label+': '+(d.error?.message||status);
+}
+async function fetchWithRetry(url,opts,maxRetries){
+  if(maxRetries===undefined)maxRetries=2;
+  for(let attempt=0;;attempt++){
+    const r=await fetch(url,opts);
+    if(r.status!==429||attempt>=maxRetries)return r;
+    let waitMs=1500*Math.pow(2,attempt);
+    const retryAfter=r.headers.get('retry-after');
+    if(retryAfter){const sec=parseFloat(retryAfter);if(!isNaN(sec))waitMs=Math.max(sec*1000,waitMs);}
+    await new Promise(res=>setTimeout(res,waitMs));
+  }
+}
 async function callClaudeStream(am,img,sys,model,key,onDelta){
   const ctrl=new AbortController();
   const msgs2=am.map((m,i)=>{
@@ -1010,8 +1026,8 @@ async function callClaudeStream(am,img,sys,model,key,onDelta){
     }
     return{role:m.role,content:m.content};
   });
-  const r=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json','x-api-key':key,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},body:JSON.stringify({model:model,max_tokens:1500,stream:true,system:sys,messages:msgs2}),signal:ctrl.signal});
-  if(!r.ok){const d=await r.json().catch(()=>({}));throw new Error('Claude: '+(d.error?.message||r.status));}
+  const r=await fetchWithRetry('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json','x-api-key':key,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},body:JSON.stringify({model:model,max_tokens:1500,stream:true,system:sys,messages:msgs2}),signal:ctrl.signal});
+  if(!r.ok){const d=await r.json().catch(()=>({}));throw new Error(apiErrMsg('Claude',d,r.status));}
   const reader=r.body.getReader(),decoder=new TextDecoder();
   let acc='',buf='';
   try{
@@ -1040,8 +1056,8 @@ async function callGeminiStream(am,img,sys,model,key,onDelta){
     if(i===am.length-1&&img&&m.role==='user'){return{role,parts:[{inline_data:{mime_type:img.mime,data:img.b64}},{text:m.content}]};}
     return{role,parts:[{text:m.content}]};
   });
-  const r=await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:streamGenerateContent?key=${key}`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({system_instruction:{parts:[{text:sys}]},contents:gm,generationConfig:{maxOutputTokens:2500,temperature:1.0},safetySettings:[{category:'HARM_CATEGORY_SEXUALLY_EXPLICIT',threshold:'BLOCK_NONE'},{category:'HARM_CATEGORY_HATE_SPEECH',threshold:'BLOCK_NONE'},{category:'HARM_CATEGORY_HARASSMENT',threshold:'BLOCK_NONE'},{category:'HARM_CATEGORY_DANGEROUS_CONTENT',threshold:'BLOCK_NONE'}]}),signal:ctrl.signal});
-  if(!r.ok){const d=await r.json().catch(()=>({}));throw new Error('Gemini: '+(d.error?.message||r.status));}
+  const r=await fetchWithRetry(`https://generativelanguage.googleapis.com/v1beta/models/${model}:streamGenerateContent?key=${key}`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({system_instruction:{parts:[{text:sys}]},contents:gm,generationConfig:{maxOutputTokens:2500,temperature:1.0},safetySettings:[{category:'HARM_CATEGORY_SEXUALLY_EXPLICIT',threshold:'BLOCK_NONE'},{category:'HARM_CATEGORY_HATE_SPEECH',threshold:'BLOCK_NONE'},{category:'HARM_CATEGORY_HARASSMENT',threshold:'BLOCK_NONE'},{category:'HARM_CATEGORY_DANGEROUS_CONTENT',threshold:'BLOCK_NONE'}]}),signal:ctrl.signal});
+  if(!r.ok){const d=await r.json().catch(()=>({}));throw new Error(apiErrMsg('Gemini',d,r.status));}
   const reader=r.body.getReader(),decoder=new TextDecoder();
   let acc='',buf='',regexPos=0;
   // "thought" 파트(모델 내부 추론)는 앞에 "thought":true 가 붙어 나오므로 같이 걸러낸다.
@@ -1076,8 +1092,8 @@ async function callOpenAICompatStream(am,img,sys,model,key,baseUrl,label,onDelta
     }
     return{role:m.role,content:m.content};
   });
-  const r=await fetch(baseUrl+'/chat/completions',{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+key},body:JSON.stringify({model,stream:true,max_tokens:1500,messages:[{role:'system',content:sys},...msgs2]}),signal:ctrl.signal});
-  if(!r.ok){const d=await r.json().catch(()=>({}));throw new Error(label+': '+(d.error?.message||r.status));}
+  const r=await fetchWithRetry(baseUrl+'/chat/completions',{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+key},body:JSON.stringify({model,stream:true,max_tokens:1500,messages:[{role:'system',content:sys},...msgs2]}),signal:ctrl.signal});
+  if(!r.ok){const d=await r.json().catch(()=>({}));throw new Error(apiErrMsg(label,d,r.status));}
   const reader=r.body.getReader(),decoder=new TextDecoder();
   let acc='',buf='';
   try{
@@ -1103,15 +1119,15 @@ async function callOpenAICompatStream(am,img,sys,model,key,baseUrl,label,onDelta
 async function callNonStream(provider,model,key,sys,am){
   const cfg=PROVIDERS[provider];
   if(cfg.kind==='anthropic'){
-    const r=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json','x-api-key':key,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},body:JSON.stringify({model,max_tokens:1500,system:sys,messages:am})});
+    const r=await fetchWithRetry('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json','x-api-key':key,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},body:JSON.stringify({model,max_tokens:1500,system:sys,messages:am})});
     const d=await r.json();if(d.error)throw new Error(cfg.label+': '+d.error.message);return d.content?.[0]?.text||'';
   }
   if(cfg.kind==='openai'){
-    const r=await fetch(cfg.baseUrl+'/chat/completions',{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+key},body:JSON.stringify({model,max_tokens:1500,messages:[{role:'system',content:sys},...am]})});
+    const r=await fetchWithRetry(cfg.baseUrl+'/chat/completions',{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+key},body:JSON.stringify({model,max_tokens:1500,messages:[{role:'system',content:sys},...am]})});
     const d=await r.json();if(d.error)throw new Error(cfg.label+': '+(d.error.message||JSON.stringify(d.error)));return d.choices?.[0]?.message?.content||'';
   }
   const gm=am.map(m=>({role:m.role==='assistant'?'model':'user',parts:[{text:m.content}]}));
-  const r=await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${key}`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({system_instruction:{parts:[{text:sys}]},contents:gm,generationConfig:{maxOutputTokens:2500,temperature:1.0}})});
+  const r=await fetchWithRetry(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${key}`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({system_instruction:{parts:[{text:sys}]},contents:gm,generationConfig:{maxOutputTokens:2500,temperature:1.0}})});
   const d=await r.json();if(d.error)throw new Error(cfg.label+': '+d.error.message);
   return d.candidates?.[0]?.content?.parts?.[0]?.text||'';
 }
@@ -1127,13 +1143,13 @@ async function smallCall(prompt,maxTokens){
     const model=modelPrefs[provider]||cfg.defaultModel;
     try{
       if(cfg.kind==='google'){
-        const r=await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${key}`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({contents:[{role:'user',parts:[{text:prompt}]}],generationConfig:{maxOutputTokens:maxTokens,temperature:0.3}})});
+        const r=await fetchWithRetry(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${key}`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({contents:[{role:'user',parts:[{text:prompt}]}],generationConfig:{maxOutputTokens:maxTokens,temperature:0.3}})});
         const d=await r.json();const txt=d.candidates?.[0]?.content?.parts?.[0]?.text;if(txt)return txt.trim();
       }else if(cfg.kind==='anthropic'){
-        const r=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json','x-api-key':key,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},body:JSON.stringify({model,max_tokens:maxTokens,messages:[{role:'user',content:prompt}]})});
+        const r=await fetchWithRetry('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json','x-api-key':key,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},body:JSON.stringify({model,max_tokens:maxTokens,messages:[{role:'user',content:prompt}]})});
         const d=await r.json();const txt=d.content?.[0]?.text;if(txt)return txt.trim();
       }else{
-        const r=await fetch(cfg.baseUrl+'/chat/completions',{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+key},body:JSON.stringify({model,max_tokens:maxTokens,messages:[{role:'user',content:prompt}]})});
+        const r=await fetchWithRetry(cfg.baseUrl+'/chat/completions',{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+key},body:JSON.stringify({model,max_tokens:maxTokens,messages:[{role:'user',content:prompt}]})});
         const d=await r.json();const txt=d.choices?.[0]?.message?.content;if(txt)return txt.trim();
       }
     }catch(e){console.warn('[smallCall]',provider,e.message);}
