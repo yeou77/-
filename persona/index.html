@@ -93,7 +93,10 @@ input:checked+.slider:before{transform:translateX(16px)}
 .mbadge option{background:#1a1a1a;color:#ddd;font-size:13px}
 
 #chat{flex:1;overflow-y:auto;padding:18px 14px;scroll-behavior:smooth;-webkit-overflow-scrolling:touch;position:relative;z-index:0}
-#chatBgLayer{position:absolute;inset:0;z-index:-1;pointer-events:none;background-size:cover;background-position:center;background-repeat:no-repeat;transition:filter .1s}
+/* #chatMsgs는 스크롤되지만 배경은 항상 화면에 고정돼야 하므로 position:fixed로 두고,
+   top/left/width/height는 JS(syncChatBgLayer)로 #chat의 화면상 위치에 맞춰 매번 계산해서 넣는다.
+   (position:absolute+inset:0은 #chat이 스크롤될 때 내용과 같이 스크롤되어 버려서 못 쓴다.) */
+#chatBgLayer{position:fixed;z-index:-1;pointer-events:none;background-size:cover;background-position:center;background-repeat:no-repeat;transition:filter .1s}
 #chat::-webkit-scrollbar{width:3px}
 #chat::-webkit-scrollbar-thumb{background:#222;border-radius:2px}
 .datediv{text-align:center;font-size:11px;color:#555;margin:12px 0 16px}
@@ -843,7 +846,22 @@ function applyChatBg(p){
     layer.style.backgroundImage='';
     layer.style.filter='';
   }
+  syncChatBgLayer();
 }
+// #chatBgLayer(position:fixed)의 위치·크기를 #chat의 실제 화면상 사각형에 맞춘다.
+// #chat 자체는 스크롤해도 화면에서 움직이지 않으므로, 이 값은 스크롤 중엔 다시 계산할 필요 없고
+// 레이아웃이 바뀔 수 있는 시점(채팅 열기, 리사이즈/회전)에만 갱신하면 된다.
+function syncChatBgLayer(){
+  const chat=document.getElementById('chat'),layer=document.getElementById('chatBgLayer');
+  if(!chat||!layer)return;
+  const r=chat.getBoundingClientRect();
+  layer.style.top=r.top+'px';
+  layer.style.left=r.left+'px';
+  layer.style.width=r.width+'px';
+  layer.style.height=r.height+'px';
+}
+window.addEventListener('resize',syncChatBgLayer);
+window.addEventListener('orientationchange',syncChatBgLayer);
 async function savePersona(){
   const name=document.getElementById('pe-name').value.trim();
   const prompt=document.getElementById('pe-prompt').value.trim();
@@ -934,6 +952,7 @@ async function openChat(id){
   summaries=(ss||[]).sort((a,b)=>(a.createdAt||0)-(b.createdAt||0));
   renderAllMsgs();
   showView('chat');
+  syncChatBgLayer(); // showView 전엔 #chatscreen이 display:none이라 #chat의 rect가 0이었으므로, 보인 다음 다시 계산
   const last=msgs[msgs.length-1];
   if(msgs.length===0&&p.greeting){
     addGreetingMsg(p.greeting);
