@@ -46,6 +46,11 @@ input:checked+.slider:before{transform:translateX(16px)}
 /* ── 초기 키 설정 화면 ── */
 #keysetup{position:fixed;inset:0;background:#000;display:none;flex-direction:column;justify-content:center;align-items:center;padding:32px;z-index:50;overflow-y:auto}
 #keysetup.active{display:flex}
+#lockscreen{position:fixed;inset:0;background:#000;display:none;flex-direction:column;justify-content:center;align-items:center;padding:32px;z-index:500}
+#lockscreen.active{display:flex}
+#lockscreen h1{font-family:Georgia,serif;font-size:22px;margin-bottom:8px}
+#lockscreen .sub{font-size:12px;color:#666;margin-bottom:24px;text-align:center}
+#lockscreen .box{width:100%;max-width:320px}
 #keysetup h1{font-family:Georgia,serif;font-size:22px;margin-bottom:8px}
 #keysetup .sub{font-size:12px;color:#666;margin-bottom:24px;text-align:center;line-height:1.8}
 #keysetup .box{width:100%;max-width:400px}
@@ -161,6 +166,16 @@ input:checked+.slider:before{transform:translateX(16px)}
 </style>
 </head>
 <body>
+
+<div id="lockscreen">
+  <h1>🔒 페르소나 챗</h1>
+  <p class="sub">비밀번호를 입력해줘.</p>
+  <div class="box">
+    <input class="kinput" id="lock-pw" type="password" placeholder="비밀번호" autocomplete="off">
+    <button class="pbtn primary" onclick="submitLock()">열기</button>
+    <p id="lockerr" style="color:#8b5050;font-size:12px;margin-top:8px;display:none"></p>
+  </div>
+</div>
 
 <div id="app">
 
@@ -299,6 +314,16 @@ input:checked+.slider:before{transform:translateX(16px)}
     </div>
 
     <div style="margin-top:10px;border-top:1px solid #1c1c1c;padding-top:14px">
+      <label class="flabel">화면 잠금 (비밀번호)</label>
+      <div id="lock-status" style="font-size:11px;color:#555;margin-bottom:8px"></div>
+      <div class="row2" style="margin-bottom:4px">
+        <input class="kinput" id="set-lockpw" type="password" placeholder="새 비밀번호">
+        <button class="pbtn primary" style="width:auto;padding:0 16px;margin-bottom:10px" onclick="saveLockPw()">설정</button>
+      </div>
+      <button class="pbtn" id="lock-remove-btn" onclick="removeLockPw()" style="border-color:#3a1a1a;color:#8b4040;display:none">잠금 해제 (비밀번호 삭제)</button>
+    </div>
+
+    <div style="margin-top:10px;border-top:1px solid #1c1c1c;padding-top:14px">
       <label class="flabel">기본 모델 (페르소나가 "기본 설정 따르기"일 때 사용)</label>
       <select class="kselect" id="set-defprov" onchange="saveDefaultProvider(this.value)">
         <option value="claude">Claude</option>
@@ -420,6 +445,35 @@ const DEFAULT_MODELS=Object.fromEntries(PROVIDER_ORDER.map(p=>[p,PROVIDERS[p].de
 
 function genId(p){return p+'_'+Date.now().toString(36)+Math.random().toString(36).slice(2,8);}
 function hasAnyKey(){return PROVIDER_ORDER.some(p=>apiKeys[p]);}
+
+/* ══════════════════════ 화면 잠금 (간단 비밀번호) ══════════════════════ */
+async function sha256Hex(str){
+  const buf=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(str));
+  return Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,'0')).join('');
+}
+function getLockHash(){return localStorage.getItem('personaLockHash')||'';}
+function isUnlocked(){
+  const h=getLockHash();
+  if(!h)return true;
+  return localStorage.getItem('personaUnlockedFor')===h;
+}
+async function submitLock(){
+  const pw=document.getElementById('lock-pw').value;
+  const entered=await sha256Hex(pw);
+  if(entered===getLockHash()){
+    localStorage.setItem('personaUnlockedFor',entered);
+    document.getElementById('lockscreen').classList.remove('active');
+    boot();
+  }else{
+    const e=document.getElementById('lockerr');e.textContent='비밀번호가 틀렸어.';e.style.display='block';
+  }
+}
+async function setLockPassword(pw){
+  if(!pw){localStorage.removeItem('personaLockHash');localStorage.removeItem('personaUnlockedFor');return;}
+  const h=await sha256Hex(pw);
+  localStorage.setItem('personaLockHash',h);
+  localStorage.setItem('personaUnlockedFor',h);
+}
 function noSpLen(s){return s.replace(/\s/g,'').length;}
 function atSentEnd(s){return /[.!?"。]\s*$/.test(s);}
 function trimToSentence(t){
@@ -1358,9 +1412,30 @@ function openSettings(){
   document.getElementById('set-alias').value=userAlias;
   document.getElementById('set-defprov').value=defaultProvider;
   PROVIDER_ORDER.forEach(p=>{const el=document.getElementById('key-'+p);if(el)el.value=apiKeys[p]?'••••••••':'';});
+  renderLockStatus();
   document.getElementById('settingsOv').style.display='flex';
 }
 function closeSettings(){document.getElementById('settingsOv').style.display='none';}
+function renderLockStatus(){
+  const set=!!getLockHash();
+  document.getElementById('lock-status').textContent=set?'✓ 비밀번호가 설정돼 있어. 아래에 입력하면 변경돼.':'설정 안 됨 — 아무나 이 주소로 들어올 수 있어.';
+  document.getElementById('lock-remove-btn').style.display=set?'block':'none';
+  document.getElementById('set-lockpw').value='';
+}
+async function saveLockPw(){
+  const pw=document.getElementById('set-lockpw').value;
+  if(!pw){alert('비밀번호를 입력해줘.');return;}
+  await setLockPassword(pw);
+  renderLockStatus();
+  showToastLite('비밀번호가 설정됐어');
+}
+async function removeLockPw(){
+  showConf('비밀번호를 삭제하면 이 주소로 아무나 들어올 수 있어. 계속할까?',async()=>{
+    await setLockPassword('');
+    renderLockStatus();
+    showToastLite('잠금이 해제됐어');
+  });
+}
 async function saveAlias(){
   userAlias=document.getElementById('set-alias').value.trim();
   await idbPut('settings',{key:'userAlias',value:userAlias});
@@ -1481,7 +1556,13 @@ window.addEventListener('DOMContentLoaded',()=>{
       if(p)maybeFirstGreet(p);
     }
   });
-  boot();
+  document.getElementById('lock-pw').addEventListener('keydown',e=>{if(e.key==='Enter')submitLock();});
+  if(isUnlocked()){
+    boot();
+  }else{
+    document.getElementById('lockscreen').classList.add('active');
+    document.getElementById('lock-pw').focus();
+  }
 });
 </script>
 </body>
