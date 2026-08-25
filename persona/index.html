@@ -1188,7 +1188,12 @@ async function smallCall(prompt,maxTokens){
     try{
       if(cfg.kind==='google'){
         const r=await fetchWithRetry(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${key}`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({contents:[{role:'user',parts:[{text:prompt}]}],generationConfig:{maxOutputTokens:maxTokens,temperature:0.3}})});
-        const d=await r.json();const txt=d.candidates?.[0]?.content?.parts?.[0]?.text;if(txt)return txt.trim();
+        const d=await r.json();
+        // parts[0]이 항상 최종 답이 아니다 — 모델이 내부적으로 생각(thought)한 파트가 앞에 먼저 올 수 있어서,
+        // 그것만 집어먹으면 완성되지 않은 "생각 중" 텍스트가 그대로 요약으로 저장돼버린다. thought 파트는 걸러내고 나머지를 이어붙인다.
+        const parts=d.candidates?.[0]?.content?.parts||[];
+        const txt=parts.filter(p=>!p.thought).map(p=>p.text||'').join('').trim();
+        if(txt)return txt;
       }else if(cfg.kind==='anthropic'){
         const r=await fetchWithRetry('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json','x-api-key':key,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},body:JSON.stringify({model,max_tokens:maxTokens,messages:[{role:'user',content:prompt}]})});
         const d=await r.json();const txt=d.content?.[0]?.text;if(txt)return txt.trim();
@@ -1292,7 +1297,7 @@ ${convText}
 - 관계 온도의 변화
 
 단순 사건 나열 금지. 감정 흐름이 살아있는 서사로. 4~7문장. 한국어로.`;
-    const content=await smallCall(prompt,900);
+    const content=await smallCall(prompt,1600);
     if(!content)break; // API 실패 시 무한루프 방지, 다음 기회에 재시도
     const now=Date.now();
     const id=await idbPut('summaries',{personaId:activePersonaId,level:1,fromTurn,toTurn,content,createdAt:now});
@@ -1315,7 +1320,7 @@ async function maybeRollupEpoch(p,toTurn){
   const prompt=`다음은 ${p.name}과 사용자의 대화 ${epochFrom}~${toTurn}턴 구간을 10턴 단위로 나눠 요약한 기록이다. 이걸 하나의 큰 흐름으로 압축해줘. 중요한 사건·전환점·관계 변화는 유지하고 세부 디테일은 줄여도 좋다. 8~12문장, 한국어로.
 
 ${combined}`;
-  const content=await smallCall(prompt,1500);
+  const content=await smallCall(prompt,2500);
   if(!content)return;
   const now=Date.now();
   const id=await idbPut('summaries',{personaId:activePersonaId,level:2,fromTurn:epochFrom,toTurn,content,createdAt:now});
@@ -1560,10 +1565,13 @@ async function maybeFirstGreet(p){
 
 /* ══════════════════════ 유저노트 / 장기기억 — 각각 한 칸짜리 통합 편집 ══════════════════════ */
 // 유저노트: 유저가 직접 쓰는 한 칸짜리 메모. 자동 추출 없음 — 항상 persona당 레코드 1개.
+let _memOrigLen=0;
 function openMem(){
   const n=notes[0];
-  document.getElementById('memedit-content').value=n?n.content||'':'';
+  const v=n?n.content||'':'';
+  document.getElementById('memedit-content').value=v;
   document.getElementById('memedit-applied').checked=n?(n.applied!==false):true;
+  _memOrigLen=v.length;
   onMemEditInput();
   document.getElementById('memEditMod').style.display='flex';
 }
@@ -1571,8 +1579,16 @@ function closeMemEdit(){document.getElementById('memEditMod').style.display='non
 function onMemEditInput(){
   document.getElementById('memedit-count').textContent=document.getElementById('memedit-content').value.length+'/10000';
 }
-async function saveMemEdit(){
+function saveMemEdit(){
   const content=document.getElementById('memedit-content').value.trim();
+  // 원래 있던 내용의 절반도 안 되게 갑자기 확 줄면(버그든 실수든) 그대로 저장해버리지 않고 한 번 확인받는다.
+  if(_memOrigLen>200&&content.length<_memOrigLen*0.5){
+    showConf(`원래 ${_memOrigLen}자였는데 ${content.length}자로 많이 줄어들어. 이대로 저장하면 기존 내용은 못 돌아와. 정말 저장할까?`,()=>doSaveMemEdit(content));
+  }else{
+    doSaveMemEdit(content);
+  }
+}
+async function doSaveMemEdit(content){
   const applied=document.getElementById('memedit-applied').checked;
   const now=Date.now();
   await idbDeleteByIndex('memories','personaId',IDBKeyRange.only(activePersonaId));
@@ -1591,10 +1607,12 @@ function copyMemEdit(){
 
 // 장기기억: 10턴마다 자동으로 구간 요약을 이어붙이고, 100턴마다 그 10개를 하나로 압축한다.
 // 화면에는 항상 이어붙인 내용 전체가 한 칸으로 보이고, 직접 수정도 가능하다.
+let _sumOrigLen=0;
 function openSum(){
   const sorted=[...summaries].sort((a,b)=>(a.fromTurn||0)-(b.fromTurn||0));
   const text=sorted.map(s=>(s.fromTurn?`[${s.fromTurn}-${s.toTurn}턴]${s.level===2?' · 종합 요약':''}\n`:'')+s.content).join('\n\n');
   document.getElementById('sumedit-content').value=text;
+  _sumOrigLen=text.length;
   onSumEditInput();
   document.getElementById('sumEditMod').style.display='flex';
 }
@@ -1602,8 +1620,16 @@ function closeSumEdit(){document.getElementById('sumEditMod').style.display='non
 function onSumEditInput(){
   document.getElementById('sumedit-count').textContent=document.getElementById('sumedit-content').value.length+'/20000';
 }
-async function saveSumEdit(){
+function saveSumEdit(){
   const content=document.getElementById('sumedit-content').value.trim();
+  // 원래 있던 내용의 절반도 안 되게 갑자기 확 줄면(버그든 실수든) 그대로 저장해버리지 않고 한 번 확인받는다.
+  if(_sumOrigLen>200&&content.length<_sumOrigLen*0.5){
+    showConf(`원래 ${_sumOrigLen}자였는데 ${content.length}자로 많이 줄어들어. 이대로 저장하면 기존 내용은 못 돌아와. 정말 저장할까?`,()=>doSaveSumEdit(content));
+  }else{
+    doSaveSumEdit(content);
+  }
+}
+async function doSaveSumEdit(content){
   await idbDeleteByIndex('summaries','personaId',IDBKeyRange.only(activePersonaId));
   summaries=[];
   if(content){
