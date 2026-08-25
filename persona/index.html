@@ -2,7 +2,7 @@
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <title>페르소나 챗</title>
 <link rel="manifest" href="manifest.json">
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
@@ -72,7 +72,7 @@ input:checked+.slider:before{transform:translateX(16px)}
 .pcard-preview{font-size:12px;color:#666;margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .pcard-time{font-size:10px;color:#444;flex-shrink:0}
 .pcard-edit{width:28px;height:28px;border-radius:50%;background:none;border:1px solid #2a2a2a;color:#555;display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;font-size:12px}
-.fab{position:absolute;right:18px;bottom:22px;width:52px;height:52px;border-radius:50%;background:#fff;color:#000;border:none;font-size:24px;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 16px rgba(0,0,0,.5)}
+.fab{position:absolute;right:18px;bottom:calc(22px + env(safe-area-inset-bottom,0px));width:52px;height:52px;border-radius:50%;background:#fff;color:#000;border:none;font-size:24px;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 16px rgba(0,0,0,.5);z-index:10}
 
 /* ── 채팅 화면 ── */
 #chatscreen{display:none;flex-direction:column;height:100%}
@@ -115,7 +115,7 @@ input:checked+.slider:before{transform:translateX(16px)}
 .editcancel{flex:1;padding:7px;background:none;border:1px solid #333;border-radius:6px;color:#666;font-size:12px;cursor:pointer}
 .bubble img{max-width:100%;border-radius:8px;margin-bottom:6px;display:block}
 
-#iarea{padding:10px 14px 20px;border-top:1px solid #1c1c1c;background:#000;flex-shrink:0}
+#iarea{padding:10px 14px calc(20px + env(safe-area-inset-bottom,0px));border-top:1px solid #1c1c1c;background:#000;flex-shrink:0}
 #imgpreview{display:none;position:relative;padding:0 0 8px}
 #imgpreview img{width:60px;height:60px;object-fit:cover;border-radius:8px;border:1px solid #333}
 #imgpreview .rmimg{position:absolute;top:-4px;left:56px;background:#333;border:none;color:#aaa;border-radius:50%;width:18px;height:18px;font-size:11px;cursor:pointer;display:flex;align-items:center;justify-content:center}
@@ -788,7 +788,7 @@ async function callGeminiStream(am,img,sys,model,key,onDelta){
     if(i===am.length-1&&img&&m.role==='user'){return{role,parts:[{inline_data:{mime_type:img.mime,data:img.b64}},{text:m.content}]};}
     return{role,parts:[{text:m.content}]};
   });
-  const r=await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:streamGenerateContent?key=${key}`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({system_instruction:{parts:[{text:sys}]},contents:gm,generationConfig:{maxOutputTokens:1500,temperature:0.9,thinkingConfig:{thinkingBudget:0}},safetySettings:[{category:'HARM_CATEGORY_SEXUALLY_EXPLICIT',threshold:'BLOCK_NONE'},{category:'HARM_CATEGORY_HATE_SPEECH',threshold:'BLOCK_NONE'},{category:'HARM_CATEGORY_HARASSMENT',threshold:'BLOCK_NONE'},{category:'HARM_CATEGORY_DANGEROUS_CONTENT',threshold:'BLOCK_NONE'}]}),signal:ctrl.signal});
+  const r=await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:streamGenerateContent?key=${key}`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({system_instruction:{parts:[{text:sys}]},contents:gm,generationConfig:{maxOutputTokens:2500,temperature:1.0},safetySettings:[{category:'HARM_CATEGORY_SEXUALLY_EXPLICIT',threshold:'BLOCK_NONE'},{category:'HARM_CATEGORY_HATE_SPEECH',threshold:'BLOCK_NONE'},{category:'HARM_CATEGORY_HARASSMENT',threshold:'BLOCK_NONE'},{category:'HARM_CATEGORY_DANGEROUS_CONTENT',threshold:'BLOCK_NONE'}]}),signal:ctrl.signal});
   if(!r.ok){const d=await r.json().catch(()=>({}));throw new Error('Gemini: '+(d.error?.message||r.status));}
   const reader=r.body.getReader(),decoder=new TextDecoder();
   let acc='',buf='',regexPos=0;
@@ -859,7 +859,7 @@ async function callNonStream(provider,model,key,sys,am){
     const d=await r.json();if(d.error)throw new Error(cfg.label+': '+(d.error.message||JSON.stringify(d.error)));return d.choices?.[0]?.message?.content||'';
   }
   const gm=am.map(m=>({role:m.role==='assistant'?'model':'user',parts:[{text:m.content}]}));
-  const r=await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${key}`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({system_instruction:{parts:[{text:sys}]},contents:gm,generationConfig:{maxOutputTokens:1500,temperature:0.9,thinkingConfig:{thinkingBudget:0}}})});
+  const r=await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${key}`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({system_instruction:{parts:[{text:sys}]},contents:gm,generationConfig:{maxOutputTokens:2500,temperature:1.0}})});
   const d=await r.json();if(d.error)throw new Error(cfg.label+': '+d.error.message);
   return d.candidates?.[0]?.content?.parts?.[0]?.text||'';
 }
@@ -875,7 +875,7 @@ async function smallCall(prompt,maxTokens){
     const model=modelPrefs[provider]||cfg.defaultModel;
     try{
       if(cfg.kind==='google'){
-        const r=await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${key}`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({contents:[{role:'user',parts:[{text:prompt}]}],generationConfig:{maxOutputTokens:maxTokens,temperature:0.3,thinkingConfig:{thinkingBudget:0}}})});
+        const r=await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${key}`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({contents:[{role:'user',parts:[{text:prompt}]}],generationConfig:{maxOutputTokens:maxTokens,temperature:0.3}})});
         const d=await r.json();const txt=d.candidates?.[0]?.content?.parts?.[0]?.text;if(txt)return txt.trim();
       }else if(cfg.kind==='anthropic'){
         const r=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json','x-api-key':key,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},body:JSON.stringify({model,max_tokens:maxTokens,messages:[{role:'user',content:prompt}]})});
