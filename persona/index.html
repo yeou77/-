@@ -1003,9 +1003,16 @@ function buildSys(p){
 
 /* ══════════════════════ Provider API 호출 (스트리밍) ══════════════════════ */
 // 429(요청량 초과)는 거의 항상 일시적이라, 바로 에러로 띄우기 전에 잠깐 쉬었다 몇 번 재시도한다.
-function apiErrMsg(label,d,status){
+function apiErrMsg(label,d,status,rawText){
   if(status===429)return label+': 요청이 너무 많아요(429). 잠깐 쉬었다가 다시 시도해줘.';
-  return label+': '+(d.error?.message||status);
+  const msg=d.error?.message||(typeof d.error==='string'?d.error:'')||(rawText?rawText.slice(0,300):'');
+  return label+': '+(msg||status)+' ('+status+')';
+}
+async function readErrBody(r){
+  const t=await r.text().catch(()=>'');
+  let d={};
+  try{d=JSON.parse(t);}catch(e){}
+  return{d,t};
 }
 async function fetchWithRetry(url,opts,maxRetries){
   if(maxRetries===undefined)maxRetries=2;
@@ -1027,7 +1034,7 @@ async function callClaudeStream(am,img,sys,model,key,onDelta){
     return{role:m.role,content:m.content};
   });
   const r=await fetchWithRetry('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json','x-api-key':key,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},body:JSON.stringify({model:model,max_tokens:1500,stream:true,system:sys,messages:msgs2}),signal:ctrl.signal});
-  if(!r.ok){const d=await r.json().catch(()=>({}));throw new Error(apiErrMsg('Claude',d,r.status));}
+  if(!r.ok){const{d,t}=await readErrBody(r);throw new Error(apiErrMsg('Claude',d,r.status,t));}
   const reader=r.body.getReader(),decoder=new TextDecoder();
   let acc='',buf='';
   try{
@@ -1057,7 +1064,7 @@ async function callGeminiStream(am,img,sys,model,key,onDelta){
     return{role,parts:[{text:m.content}]};
   });
   const r=await fetchWithRetry(`https://generativelanguage.googleapis.com/v1beta/models/${model}:streamGenerateContent?key=${key}`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({system_instruction:{parts:[{text:sys}]},contents:gm,generationConfig:{maxOutputTokens:2500,temperature:1.0},safetySettings:[{category:'HARM_CATEGORY_SEXUALLY_EXPLICIT',threshold:'BLOCK_NONE'},{category:'HARM_CATEGORY_HATE_SPEECH',threshold:'BLOCK_NONE'},{category:'HARM_CATEGORY_HARASSMENT',threshold:'BLOCK_NONE'},{category:'HARM_CATEGORY_DANGEROUS_CONTENT',threshold:'BLOCK_NONE'}]}),signal:ctrl.signal});
-  if(!r.ok){const d=await r.json().catch(()=>({}));throw new Error(apiErrMsg('Gemini',d,r.status));}
+  if(!r.ok){const{d,t}=await readErrBody(r);throw new Error(apiErrMsg('Gemini',d,r.status,t));}
   const reader=r.body.getReader(),decoder=new TextDecoder();
   let acc='',buf='',regexPos=0;
   // "thought" 파트(모델 내부 추론)는 앞에 "thought":true 가 붙어 나오므로 같이 걸러낸다.
@@ -1093,7 +1100,7 @@ async function callOpenAICompatStream(am,img,sys,model,key,baseUrl,label,onDelta
     return{role:m.role,content:m.content};
   });
   const r=await fetchWithRetry(baseUrl+'/chat/completions',{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+key},body:JSON.stringify({model,stream:true,max_tokens:1500,messages:[{role:'system',content:sys},...msgs2]}),signal:ctrl.signal});
-  if(!r.ok){const d=await r.json().catch(()=>({}));throw new Error(apiErrMsg(label,d,r.status));}
+  if(!r.ok){const{d,t}=await readErrBody(r);throw new Error(apiErrMsg(label,d,r.status,t));}
   const reader=r.body.getReader(),decoder=new TextDecoder();
   let acc='',buf='';
   try{
