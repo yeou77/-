@@ -255,8 +255,26 @@ input:checked+.slider:before{transform:translateX(16px)}
   <div class="fmod-body">
     <label class="flabel">이름 *</label>
     <input class="kinput" id="pe-name" placeholder="캐릭터 이름">
-    <label class="flabel">아바타 이모지</label>
-    <input class="kinput" id="pe-avatar" placeholder="👤" maxlength="4" style="width:80px">
+    <label class="flabel">아바타</label>
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:10px">
+      <div id="pe-avatar-preview" class="pcard-avatar" style="width:56px;height:56px;font-size:24px">👤</div>
+      <div style="display:flex;flex-direction:column;gap:6px">
+        <button class="pbtn" style="margin:0;width:auto;padding:6px 14px;font-size:12px" onclick="document.getElementById('pe-avatar-file').click()">이미지 선택</button>
+        <button class="pbtn ghost" style="margin:0;width:auto;padding:6px 14px;font-size:12px" onclick="clearPeAvatarImg()">이미지 제거</button>
+      </div>
+      <input type="file" id="pe-avatar-file" accept="image/*" style="display:none" onchange="onPeAvatarSelect(this)">
+    </div>
+    <label class="flabel">아바타 이모지 (이미지 없을 때 사용)</label>
+    <input class="kinput" id="pe-avatar" placeholder="👤" maxlength="4" style="width:80px" oninput="onPeEmojiInput()">
+
+    <label class="flabel">배경화면 (선택)</label>
+    <div id="pe-bg-preview" style="width:100%;height:110px;border-radius:10px;background-color:#161618;background-size:cover;background-position:center;border:1px solid #2a2a2a;margin-bottom:8px;display:flex;align-items:center;justify-content:center;color:#555;font-size:12px">배경 없음</div>
+    <div class="row2" style="margin-bottom:10px">
+      <button class="pbtn" style="margin:0" onclick="document.getElementById('pe-bg-file').click()">배경 이미지 선택</button>
+      <button class="pbtn ghost" style="margin:0" onclick="clearPeBgImg()">배경 제거</button>
+    </div>
+    <input type="file" id="pe-bg-file" accept="image/*" style="display:none" onchange="onPeBgSelect(this)">
+
     <label class="flabel">캐릭터 설정 *</label>
     <textarea class="ktextarea" id="pe-prompt" style="min-height:220px" placeholder="예시 구조:
 [정체성] 이 캐릭터가 누구인지, 나와의 관계
@@ -628,7 +646,7 @@ function renderHome(){
   personas.forEach(p=>{
     const card=document.createElement('div');card.className='pcard';
     card.onclick=()=>openChat(p.id);
-    const av=document.createElement('div');av.className='pcard-avatar';av.textContent=p.avatar||'👤';
+    const av=document.createElement('div');av.className='pcard-avatar';setAvatarEl(av,p);
     const body=document.createElement('div');body.className='pcard-body';
     const nameRow=document.createElement('div');nameRow.className='pcard-name';
     nameRow.innerHTML=`<span>${escapeHtml(p.name)}</span><span class="pcard-provbadge">${PROVIDER_LABEL[resolveProvider(p)]}</span>`;
@@ -645,7 +663,7 @@ function resolveProvider(p){return (p.provider&&p.provider!=='default')?p.provid
 function resolveModel(p,provider){return p.model||modelPrefs[provider]||DEFAULT_MODELS[provider];}
 
 /* ══════════════════════ 페르소나 편집기 ══════════════════════ */
-let _editingId=null;
+let _editingId=null,_peAvatarImg=null,_peBgImg=null;
 function openEditor(id){
   _editingId=id;
   const p=id?personas.find(x=>x.id===id):null;
@@ -658,10 +676,82 @@ function openEditor(id){
   document.getElementById('pe-provider').value=p?(p.provider||'default'):'default';
   document.getElementById('pe-adult').checked=!!(p&&p.adult);
   document.getElementById('peDangerZone').style.display=p?'block':'none';
+  _peAvatarImg=p?(p.avatarImg||null):null;
+  _peBgImg=p?(p.bgImg||null):null;
+  renderPeAvatarPreview();
+  renderPeBgPreview();
   document.getElementById('editorMod').style.display='flex';
 }
 function closeEditor(){document.getElementById('editorMod').style.display='none';_editingId=null;}
 function onPeProviderChange(){}
+function renderPeAvatarPreview(){
+  const el=document.getElementById('pe-avatar-preview');
+  el.innerHTML='';
+  if(_peAvatarImg){const img=document.createElement('img');img.src=_peAvatarImg;el.appendChild(img);}
+  else el.textContent=document.getElementById('pe-avatar').value.trim()||'👤';
+}
+function onPeEmojiInput(){if(!_peAvatarImg)renderPeAvatarPreview();}
+function renderPeBgPreview(){
+  const el=document.getElementById('pe-bg-preview');
+  if(_peBgImg){el.style.backgroundImage=`url(${_peBgImg})`;el.textContent='';}
+  else{el.style.backgroundImage='';el.textContent='배경 없음';}
+}
+function resizeImageFile(file,maxDim,quality){
+  return new Promise((resolve,reject)=>{
+    const reader=new FileReader();
+    reader.onload=e=>{
+      const img=new Image();
+      img.onload=()=>{
+        let w=img.width,h=img.height;
+        if(w>maxDim||h>maxDim){
+          if(w>h){h=Math.round(h*maxDim/w);w=maxDim;}
+          else{w=Math.round(w*maxDim/h);h=maxDim;}
+        }
+        const canvas=document.createElement('canvas');
+        canvas.width=w;canvas.height=h;
+        canvas.getContext('2d').drawImage(img,0,0,w,h);
+        resolve(canvas.toDataURL('image/jpeg',quality));
+      };
+      img.onerror=()=>reject(new Error('이미지를 읽을 수 없어'));
+      img.src=e.target.result;
+    };
+    reader.onerror=()=>reject(new Error('파일을 읽을 수 없어'));
+    reader.readAsDataURL(file);
+  });
+}
+async function onPeAvatarSelect(input){
+  const file=input.files[0];if(!file)return;
+  try{_peAvatarImg=await resizeImageFile(file,300,0.85);renderPeAvatarPreview();}
+  catch(e){alert(e.message);}
+  input.value='';
+}
+function clearPeAvatarImg(){_peAvatarImg=null;renderPeAvatarPreview();}
+async function onPeBgSelect(input){
+  const file=input.files[0];if(!file)return;
+  try{_peBgImg=await resizeImageFile(file,1280,0.8);renderPeBgPreview();}
+  catch(e){alert(e.message);}
+  input.value='';
+}
+function clearPeBgImg(){_peBgImg=null;renderPeBgPreview();}
+function setAvatarEl(el,p){
+  el.innerHTML='';
+  if(p.avatarImg){const img=document.createElement('img');img.src=p.avatarImg;el.appendChild(img);}
+  else el.textContent=p.avatar||'👤';
+}
+function applyChatBg(p){
+  const chat=document.getElementById('chat');
+  if(p.bgImg){
+    chat.style.backgroundImage=`linear-gradient(rgba(0,0,0,.6),rgba(0,0,0,.6)), url(${p.bgImg})`;
+    chat.style.backgroundSize='cover';
+    chat.style.backgroundPosition='center';
+    chat.style.backgroundRepeat='no-repeat';
+  }else{
+    chat.style.backgroundImage='';
+    chat.style.backgroundSize='';
+    chat.style.backgroundPosition='';
+    chat.style.backgroundRepeat='';
+  }
+}
 async function savePersona(){
   const name=document.getElementById('pe-name').value.trim();
   const prompt=document.getElementById('pe-prompt').value.trim();
@@ -673,6 +763,8 @@ async function savePersona(){
   if(!p){p={id:genId('p'),createdAt:now};personas.push(p);}
   p.name=name;
   p.avatar=document.getElementById('pe-avatar').value.trim()||'👤';
+  p.avatarImg=_peAvatarImg;
+  p.bgImg=_peBgImg;
   p.systemPrompt=prompt;
   p.greeting=document.getElementById('pe-greeting').value.trim();
   p.style=document.getElementById('pe-style').value;
@@ -684,7 +776,8 @@ async function savePersona(){
   renderHome();
   if(activePersonaId===p.id){
     document.getElementById('hname').textContent=p.name;
-    document.getElementById('avatar').textContent=p.avatar;
+    setAvatarEl(document.getElementById('avatar'),p);
+    applyChatBg(p);
     updateBadge(p);
   }
   if(isNew)openChat(p.id);
@@ -731,7 +824,8 @@ async function openChat(id){
   const p=personas.find(x=>x.id===id);
   if(!p)return;
   document.getElementById('hname').textContent=p.name;
-  document.getElementById('avatar').textContent=p.avatar||'👤';
+  setAvatarEl(document.getElementById('avatar'),p);
+  applyChatBg(p);
   document.getElementById('hstatus').textContent='';
   updateBadge(p);
   const [ms,mm,ss]=await Promise.all([
