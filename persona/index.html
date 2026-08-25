@@ -1737,6 +1737,10 @@ function doResetAll(){
   });
 }
 
+if('serviceWorker' in navigator){
+  window.addEventListener('load',()=>{navigator.serviceWorker.register('sw.js').catch(()=>{});});
+}
+
 /* ══════════════════════ 입력창 오토리사이즈 & 초기화 ══════════════════════ */
 window.addEventListener('DOMContentLoaded',()=>{
   const inp=document.getElementById('minput');
