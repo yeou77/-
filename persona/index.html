@@ -49,8 +49,8 @@ input:checked+.slider:before{transform:translateX(16px)}
 #keysetup h1{font-family:Georgia,serif;font-size:22px;margin-bottom:8px}
 #keysetup .sub{font-size:12px;color:#666;margin-bottom:24px;text-align:center;line-height:1.8}
 #keysetup .box{width:100%;max-width:400px}
-.provtabs{display:flex;gap:8px;margin-bottom:14px}
-.provtab{flex:1;padding:10px 0;border-radius:8px;font-size:12px;cursor:pointer;background:none;border:1px solid #444;color:#888;text-align:center}
+.provtabs{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px}
+.provtab{flex:1 1 28%;min-width:80px;padding:10px 0;border-radius:8px;font-size:12px;cursor:pointer;background:none;border:1px solid #444;color:#888;text-align:center}
 .provtab.active{background:#fff;color:#000;border-color:#fff}
 .provpanel{display:none}
 .provpanel.active{display:block}
@@ -173,10 +173,16 @@ input:checked+.slider:before{transform:translateX(16px)}
         <button class="provtab active" data-p="claude" onclick="ksTab('claude')">Claude</button>
         <button class="provtab" data-p="openai" onclick="ksTab('openai')">ChatGPT</button>
         <button class="provtab" data-p="gemini" onclick="ksTab('gemini')">Gemini</button>
+        <button class="provtab" data-p="grok" onclick="ksTab('grok')">Grok</button>
+        <button class="provtab" data-p="deepseek" onclick="ksTab('deepseek')">DeepSeek</button>
+        <button class="provtab" data-p="llama" onclick="ksTab('llama')">Llama</button>
       </div>
       <div class="provpanel active" data-p="claude"><input class="kinput" id="ks-claude" type="password" placeholder="sk-ant-api03-..."></div>
       <div class="provpanel" data-p="openai"><input class="kinput" id="ks-openai" type="password" placeholder="sk-..."></div>
       <div class="provpanel" data-p="gemini"><input class="kinput" id="ks-gemini" type="password" placeholder="AIza..."></div>
+      <div class="provpanel" data-p="grok"><input class="kinput" id="ks-grok" type="password" placeholder="xai-..."></div>
+      <div class="provpanel" data-p="deepseek"><input class="kinput" id="ks-deepseek" type="password" placeholder="sk-..."></div>
+      <div class="provpanel" data-p="llama"><input class="kinput" id="ks-llama" type="password" placeholder="gsk_... (Groq 키)"></div>
       <button class="pbtn primary" onclick="doKeySetup()">시작하기</button>
       <p id="kserr"></p>
     </div>
@@ -258,6 +264,9 @@ input:checked+.slider:before{transform:translateX(16px)}
       <option value="claude">Claude</option>
       <option value="openai">ChatGPT (OpenAI)</option>
       <option value="gemini">Gemini</option>
+      <option value="grok">Grok (xAI)</option>
+      <option value="deepseek">DeepSeek</option>
+      <option value="llama">Llama (Groq)</option>
     </select>
     <div class="toggle-row">
       <div>
@@ -295,6 +304,9 @@ input:checked+.slider:before{transform:translateX(16px)}
         <option value="claude">Claude</option>
         <option value="openai">ChatGPT (OpenAI)</option>
         <option value="gemini">Gemini</option>
+        <option value="grok">Grok (xAI)</option>
+        <option value="deepseek">DeepSeek</option>
+        <option value="llama">Llama (Groq)</option>
       </select>
     </div>
 
@@ -305,6 +317,13 @@ input:checked+.slider:before{transform:translateX(16px)}
       <div class="row2"><input class="kinput" id="key-openai" type="password" placeholder="sk-..."><button class="pbtn primary" style="width:auto;padding:0 16px;margin-bottom:10px" onclick="saveKey('openai')">저장</button></div>
       <label class="flabel">Gemini API 키</label>
       <div class="row2"><input class="kinput" id="key-gemini" type="password" placeholder="AIza..."><button class="pbtn primary" style="width:auto;padding:0 16px;margin-bottom:10px" onclick="saveKey('gemini')">저장</button></div>
+      <label class="flabel">Grok (xAI) API 키</label>
+      <div class="row2"><input class="kinput" id="key-grok" type="password" placeholder="xai-..."><button class="pbtn primary" style="width:auto;padding:0 16px;margin-bottom:10px" onclick="saveKey('grok')">저장</button></div>
+      <label class="flabel">DeepSeek API 키</label>
+      <div class="row2"><input class="kinput" id="key-deepseek" type="password" placeholder="sk-..."><button class="pbtn primary" style="width:auto;padding:0 16px;margin-bottom:10px" onclick="saveKey('deepseek')">저장</button></div>
+      <label class="flabel">Llama API 키 (Groq)</label>
+      <div class="row2"><input class="kinput" id="key-llama" type="password" placeholder="gsk_..."><button class="pbtn primary" style="width:auto;padding:0 16px;margin-bottom:10px" onclick="saveKey('llama')">저장</button></div>
+      <div style="font-size:11px;color:#555;margin-top:-4px;line-height:1.6">Llama는 Meta가 직접 API를 안 줘서, 무료로 빠르게 쓸 수 있는 Groq(console.groq.com)의 키를 써.</div>
     </div>
 
     <div style="margin-top:4px;border-top:1px solid #1c1c1c;padding-top:16px">
@@ -379,17 +398,28 @@ let db=null;
 let personas=[];          // 페르소나 메타데이터 전체 목록
 let activePersonaId=null;
 let msgs=[],mems={},summaries=[];
-let apiKeys={claude:'',openai:'',gemini:''};
-let modelPrefs={claude:'claude-sonnet-4-6',openai:'gpt-4o',gemini:'gemini-2.5-flash'};
+/* provider kind: 'anthropic'(Claude 고유 형식) / 'google'(Gemini 고유 형식) / 'openai'(OpenAI 호환 형식 — ChatGPT·Grok·DeepSeek·Llama가 전부 이 형식을 씀) */
+const PROVIDERS={
+  claude:  {label:'Claude',       kind:'anthropic', defaultModel:'claude-sonnet-4-6'},
+  openai:  {label:'ChatGPT',      kind:'openai',    baseUrl:'https://api.openai.com/v1',   defaultModel:'gpt-4o'},
+  gemini:  {label:'Gemini',       kind:'google',    defaultModel:'gemini-2.5-flash'},
+  grok:    {label:'Grok',         kind:'openai',    baseUrl:'https://api.x.ai/v1',         defaultModel:'grok-4'},
+  deepseek:{label:'DeepSeek',     kind:'openai',    baseUrl:'https://api.deepseek.com/v1', defaultModel:'deepseek-chat'},
+  llama:   {label:'Llama (Groq)', kind:'openai',    baseUrl:'https://api.groq.com/openai/v1', defaultModel:'llama-3.3-70b-versatile'},
+};
+const PROVIDER_ORDER=Object.keys(PROVIDERS);
+let apiKeys=Object.fromEntries(PROVIDER_ORDER.map(p=>[p,'']));
+let modelPrefs=Object.fromEntries(PROVIDER_ORDER.map(p=>[p,PROVIDERS[p].defaultModel]));
 let userAlias='';
 let defaultProvider='claude';
 let loading=false,pendingImg=null;
 let _confCb=null,_impMode='merge',_impData=null,_ksSelected='claude';
 const STREAM_TARGET=650,STREAM_MAX=850;
-const PROVIDER_LABEL={claude:'Claude',openai:'ChatGPT',gemini:'Gemini'};
-const DEFAULT_MODELS={claude:'claude-sonnet-4-6',openai:'gpt-4o',gemini:'gemini-2.5-flash'};
+const PROVIDER_LABEL=Object.fromEntries(PROVIDER_ORDER.map(p=>[p,PROVIDERS[p].label]));
+const DEFAULT_MODELS=Object.fromEntries(PROVIDER_ORDER.map(p=>[p,PROVIDERS[p].defaultModel]));
 
 function genId(p){return p+'_'+Date.now().toString(36)+Math.random().toString(36).slice(2,8);}
+function hasAnyKey(){return PROVIDER_ORDER.some(p=>apiKeys[p]);}
 function noSpLen(s){return s.replace(/\s/g,'').length;}
 function atSentEnd(s){return /[.!?"。]\s*$/.test(s);}
 function trimToSentence(t){
@@ -489,7 +519,7 @@ async function boot(){
   db=await openDatabase();
   await loadSettings();
   await loadPersonas();
-  if(!apiKeys.claude&&!apiKeys.openai&&!apiKeys.gemini){
+  if(!hasAnyKey()){
     document.getElementById('keysetup').classList.add('active');
     return;
   }
@@ -512,15 +542,17 @@ function ksTab(p){
   document.querySelectorAll('.provpanel').forEach(b=>b.classList.toggle('active',b.dataset.p===p));
 }
 async function doKeySetup(){
-  const c=document.getElementById('ks-claude').value.trim();
-  const o=document.getElementById('ks-openai').value.trim();
-  const g=document.getElementById('ks-gemini').value.trim();
-  if(!c&&!o&&!g){
+  const entered={};
+  for(const p of PROVIDER_ORDER){
+    const el=document.getElementById('ks-'+p);
+    if(el){const v=el.value.trim();if(v)entered[p]=v;}
+  }
+  if(!Object.keys(entered).length){
     const e=document.getElementById('kserr');e.textContent='최소 하나의 API 키를 입력해줘.';e.style.display='block';return;
   }
-  if(c)apiKeys.claude=c;if(o)apiKeys.openai=o;if(g)apiKeys.gemini=g;
+  Object.assign(apiKeys,entered);
   await idbPut('settings',{key:'apiKeys',value:apiKeys});
-  defaultProvider=c?'claude':(o?'openai':'gemini');
+  defaultProvider=PROVIDER_ORDER.find(p=>entered[p])||'claude';
   await idbPut('settings',{key:'defaultProvider',value:defaultProvider});
   document.getElementById('keysetup').classList.remove('active');
   renderHome();showView('home');
@@ -778,7 +810,7 @@ async function callGeminiStream(am,img,sys,model,key,onDelta){
   }catch(e){if(e.name!=='AbortError')throw e;}
   return acc;
 }
-async function callOpenAIStream(am,img,sys,model,key,onDelta){
+async function callOpenAICompatStream(am,img,sys,model,key,baseUrl,label,onDelta){
   const ctrl=new AbortController();
   const msgs2=am.map((m,i)=>{
     if(i===am.length-1&&img&&m.role==='user'){
@@ -786,8 +818,8 @@ async function callOpenAIStream(am,img,sys,model,key,onDelta){
     }
     return{role:m.role,content:m.content};
   });
-  const r=await fetch('https://api.openai.com/v1/chat/completions',{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+key},body:JSON.stringify({model,stream:true,max_tokens:1500,messages:[{role:'system',content:sys},...msgs2]}),signal:ctrl.signal});
-  if(!r.ok){const d=await r.json().catch(()=>({}));throw new Error('ChatGPT: '+(d.error?.message||r.status));}
+  const r=await fetch(baseUrl+'/chat/completions',{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+key},body:JSON.stringify({model,stream:true,max_tokens:1500,messages:[{role:'system',content:sys},...msgs2]}),signal:ctrl.signal});
+  if(!r.ok){const d=await r.json().catch(()=>({}));throw new Error(label+': '+(d.error?.message||r.status));}
   const reader=r.body.getReader(),decoder=new TextDecoder();
   let acc='',buf='';
   try{
@@ -811,34 +843,39 @@ async function callOpenAIStream(am,img,sys,model,key,onDelta){
   return acc;
 }
 async function callNonStream(provider,model,key,sys,am){
-  if(provider==='claude'){
+  const cfg=PROVIDERS[provider];
+  if(cfg.kind==='anthropic'){
     const r=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json','x-api-key':key,'anthropic-version':'2023-06-01'},body:JSON.stringify({model,max_tokens:1500,system:sys,messages:am})});
-    const d=await r.json();if(d.error)throw new Error('Claude: '+d.error.message);return d.content?.[0]?.text||'';
+    const d=await r.json();if(d.error)throw new Error(cfg.label+': '+d.error.message);return d.content?.[0]?.text||'';
   }
-  if(provider==='openai'){
-    const r=await fetch('https://api.openai.com/v1/chat/completions',{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+key},body:JSON.stringify({model,max_tokens:1500,messages:[{role:'system',content:sys},...am]})});
-    const d=await r.json();if(d.error)throw new Error('ChatGPT: '+d.error.message);return d.choices?.[0]?.message?.content||'';
+  if(cfg.kind==='openai'){
+    const r=await fetch(cfg.baseUrl+'/chat/completions',{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+key},body:JSON.stringify({model,max_tokens:1500,messages:[{role:'system',content:sys},...am]})});
+    const d=await r.json();if(d.error)throw new Error(cfg.label+': '+(d.error.message||JSON.stringify(d.error)));return d.choices?.[0]?.message?.content||'';
   }
   const gm=am.map(m=>({role:m.role==='assistant'?'model':'user',parts:[{text:m.content}]}));
   const r=await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${key}`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({system_instruction:{parts:[{text:sys}]},contents:gm,generationConfig:{maxOutputTokens:1500,temperature:0.9}})});
-  const d=await r.json();if(d.error)throw new Error('Gemini: '+d.error.message);
+  const d=await r.json();if(d.error)throw new Error(cfg.label+': '+d.error.message);
   return d.candidates?.[0]?.content?.parts?.[0]?.text||'';
 }
 async function smallCall(prompt,maxTokens){
-  const order=[resolveProvider(personas.find(x=>x.id===activePersonaId)||{}),'claude','openai','gemini'];
+  const order=[resolveProvider(personas.find(x=>x.id===activePersonaId)||{}),...PROVIDER_ORDER];
+  const tried=new Set();
   for(const provider of order){
+    if(tried.has(provider))continue;
+    tried.add(provider);
     const key=apiKeys[provider];
     if(!key)continue;
-    const model=modelPrefs[provider]||DEFAULT_MODELS[provider];
+    const cfg=PROVIDERS[provider];
+    const model=modelPrefs[provider]||cfg.defaultModel;
     try{
-      if(provider==='gemini'){
+      if(cfg.kind==='google'){
         const r=await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${key}`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({contents:[{role:'user',parts:[{text:prompt}]}],generationConfig:{maxOutputTokens:maxTokens,temperature:0.3}})});
         const d=await r.json();const txt=d.candidates?.[0]?.content?.parts?.[0]?.text;if(txt)return txt.trim();
-      }else if(provider==='claude'){
+      }else if(cfg.kind==='anthropic'){
         const r=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json','x-api-key':key,'anthropic-version':'2023-06-01'},body:JSON.stringify({model,max_tokens:maxTokens,messages:[{role:'user',content:prompt}]})});
         const d=await r.json();const txt=d.content?.[0]?.text;if(txt)return txt.trim();
       }else{
-        const r=await fetch('https://api.openai.com/v1/chat/completions',{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+key},body:JSON.stringify({model,max_tokens:maxTokens,messages:[{role:'user',content:prompt}]})});
+        const r=await fetch(cfg.baseUrl+'/chat/completions',{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+key},body:JSON.stringify({model,max_tokens:maxTokens,messages:[{role:'user',content:prompt}]})});
         const d=await r.json();const txt=d.choices?.[0]?.message?.content;if(txt)return txt.trim();
       }
     }catch(e){console.warn('[smallCall]',provider,e.message);}
@@ -847,6 +884,12 @@ async function smallCall(prompt,maxTokens){
 }
 
 /* ══════════════════════ 답변 생성 (스트리밍 + 이어쓰기) ══════════════════════ */
+async function callProviderStream(provider,am,img,sys,model,key,onDelta){
+  const cfg=PROVIDERS[provider];
+  if(cfg.kind==='anthropic')return callClaudeStream(am,img,sys,model,key,onDelta);
+  if(cfg.kind==='google')return callGeminiStream(am,img,sys,model,key,onDelta);
+  return callOpenAICompatStream(am,img,sys,model,key,cfg.baseUrl,cfg.label,onDelta);
+}
 async function getReplyStream(am,img,persona,liveBub){
   const provider=resolveProvider(persona);
   const key=apiKeys[provider];
@@ -863,9 +906,7 @@ async function getReplyStream(am,img,persona,liveBub){
   }
   let acc='';
   try{
-    if(provider==='claude')acc=await callClaudeStream(am,img,sys,model,key,onDelta);
-    else if(provider==='openai')acc=await callOpenAIStream(am,img,sys,model,key,onDelta);
-    else acc=await callGeminiStream(am,img,sys,model,key,onDelta);
+    acc=await callProviderStream(provider,am,img,sys,model,key,onDelta);
   }catch(e){
     if(e.name==='TypeError'){
       acc=await callNonStream(provider,model,key,sys,am);
@@ -893,16 +934,14 @@ async function continueStream(am,partial,persona,provider,model,key,sys,liveBub)
   }
   let extra='';
   try{
-    if(provider==='claude')extra=await callClaudeStream(contAm,undefined,sys,model,key,onDelta);
-    else if(provider==='openai')extra=await callOpenAIStream(contAm,undefined,sys,model,key,onDelta);
-    else extra=await callGeminiStream(contAm,undefined,sys,model,key,onDelta);
+    extra=await callProviderStream(provider,contAm,undefined,sys,model,key,onDelta);
   }catch(e){}
   return partial+extra;
 }
 
 /* ══════════════════════ 기억 추출 / 요약 압축 ══════════════════════ */
 async function extractMem(uMsg,aMsg,personaName){
-  if(!apiKeys.claude&&!apiKeys.openai&&!apiKeys.gemini)return;
+  if(!hasAnyKey())return;
   const prompt=`다음은 사용자와 ${personaName}(AI 캐릭터) 사이의 롤플레이 대화다. 사용자에 대해 기억해둘 만한 정보를 최대 3개 추출해라.
 
 추출 대상 (적극적으로 찾을 것):
@@ -933,7 +972,7 @@ JSON 배열로만 답할 것: [{"key":"항목명","value":"내용"}]
 }
 async function compressMsgs(persona){
   if(msgs.length<=40)return;
-  if(!apiKeys.claude&&!apiKeys.openai&&!apiKeys.gemini)return;
+  if(!hasAnyKey())return;
   const old=msgs.slice(0,msgs.length-20),recent=msgs.slice(msgs.length-20);
   const curSum=summaries.length?summaries[summaries.length-1]:null;
   const newConv=old.map(m=>(m.role==='user'?'사용자: ':persona.name+': ')+m.content).join('\n');
@@ -1284,9 +1323,7 @@ function renderSumList(){
 function openSettings(){
   document.getElementById('set-alias').value=userAlias;
   document.getElementById('set-defprov').value=defaultProvider;
-  document.getElementById('key-claude').value=apiKeys.claude?'••••••••':'';
-  document.getElementById('key-openai').value=apiKeys.openai?'••••••••':'';
-  document.getElementById('key-gemini').value=apiKeys.gemini?'••••••••':'';
+  PROVIDER_ORDER.forEach(p=>{const el=document.getElementById('key-'+p);if(el)el.value=apiKeys[p]?'••••••••':'';});
   document.getElementById('settingsOv').style.display='flex';
 }
 function closeSettings(){document.getElementById('settingsOv').style.display='none';}
@@ -1394,7 +1431,7 @@ async function doImport(){
 function doResetAll(){
   showConf('모든 페르소나·대화·기억·API 키가 영구히 삭제돼. 정말 초기화할까?',async()=>{
     await Promise.all([idbClearAll('personas'),idbClearAll('messages'),idbClearAll('memories'),idbClearAll('summaries'),idbClearAll('settings')]);
-    personas=[];msgs=[];mems={};summaries=[];apiKeys={claude:'',openai:'',gemini:''};userAlias='';
+    personas=[];msgs=[];mems={};summaries=[];apiKeys=Object.fromEntries(PROVIDER_ORDER.map(p=>[p,'']));userAlias='';
     location.reload();
   });
 }
