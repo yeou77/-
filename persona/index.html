@@ -137,8 +137,6 @@ input:checked+.slider:before{transform:translateX(16px)}
 .ov{position:fixed;inset:0;background:rgba(0,0,0,.8);display:flex;align-items:flex-end;z-index:100}
 .panel{background:#111;border-top:1px solid #333;width:100%;max-width:680px;margin:0 auto;padding:22px 20px 28px;border-radius:20px 20px 0 0;max-height:85vh;overflow-y:auto}
 .ptitle{font-family:Georgia,serif;font-size:16px;margin-bottom:16px}
-.mitem{padding:10px 14px;background:#1f2023;border:1px solid #333;border-radius:8px;margin-bottom:8px}
-.mkey{font-size:10px;color:#aaa;margin-bottom:3px}
 .mval{font-size:13px;color:#fff;line-height:1.6}
 .macts{display:flex;justify-content:space-between;align-items:center;margin-bottom:4px}
 .medbtn{background:none;border:1px solid #444;color:#aaa;font-size:10px;padding:2px 8px;border-radius:4px;cursor:pointer}
@@ -388,25 +386,10 @@ input:checked+.slider:before{transform:translateX(16px)}
 </div>
 
 <!-- ══ 유저노트 (전체화면 목록) ══ -->
-<div id="memOv" class="fmod" style="display:none">
+<!-- ══ 유저노트 — 한 칸에 직접 작성 (자동 추출 없음) ══ -->
+<div id="memEditMod" class="fmod" style="display:none">
   <div class="fmod-header">
     <div class="fmod-title">유저노트</div>
-    <button class="iconbtn" onclick="closeMem()">✕</button>
-  </div>
-  <div class="fmod-body">
-    <div style="font-size:12px;color:#555;margin-bottom:14px;line-height:1.6">대화 중 자동으로 수집된 정보야. 켜져있는(적용) 항목만 캐릭터가 실제로 참고해. 탭하면 편집돼.</div>
-    <div id="memlist"></div>
-  </div>
-  <div class="fbtns">
-    <button class="fbtn" onclick="openMemEdit(null)">+ 새 노트</button>
-    <button class="fbtn primary" onclick="closeMem()">닫기</button>
-  </div>
-</div>
-
-<!-- ══ 유저노트 개별 편집 ══ -->
-<div id="memEditMod" class="fmod" style="display:none;z-index:250">
-  <div class="fmod-header">
-    <div class="fmod-title">유저노트 편집</div>
     <button class="iconbtn" onclick="closeMemEdit()">✕</button>
   </div>
   <div class="fmod-body" style="display:flex;flex-direction:column">
@@ -414,7 +397,7 @@ input:checked+.slider:before{transform:translateX(16px)}
       <label class="flabel" style="margin:0">내용</label>
       <span id="memedit-count" style="font-size:11px;color:#555">0/10000</span>
     </div>
-    <textarea id="memedit-content" maxlength="10000" oninput="onMemEditInput()" placeholder="캐릭터가 기억했으면 하는 내용을 입력해주세요" style="flex:1;min-height:280px;resize:vertical;background:#0a0a0a;border:1px solid #333;border-radius:8px;padding:12px 14px;color:#eee;font-size:13px;line-height:1.7;outline:none;font-family:inherit"></textarea>
+    <textarea id="memedit-content" maxlength="10000" oninput="onMemEditInput()" placeholder="캐릭터가 기억했으면 하는 내용을 직접 입력해줘" style="flex:1;min-height:280px;resize:vertical;background:#0a0a0a;border:1px solid #333;border-radius:8px;padding:12px 14px;color:#eee;font-size:13px;line-height:1.7;outline:none;font-family:inherit"></textarea>
     <div class="toggle-row" style="border:none;margin-top:4px">
       <div style="font-size:13px;color:#ddd">대화에 적용하기</div>
       <label class="switch"><input type="checkbox" id="memedit-applied" checked><span class="slider"></span></label>
@@ -422,34 +405,18 @@ input:checked+.slider:before{transform:translateX(16px)}
   </div>
   <div class="fbtns">
     <button class="fbtn" onclick="copyMemEdit()">복사</button>
-    <button class="fbtn" style="color:#8b4040;border-color:#3a1a1a" onclick="deleteMemEdit()">삭제</button>
     <button class="fbtn primary" onclick="saveMemEdit()">저장</button>
   </div>
 </div>
 
-<!-- ══ 장기기억(요약) — 전체화면, 이어붙여서 넓게 ══ -->
-<div id="sumOv" class="fmod" style="display:none">
+<!-- ══ 장기기억 — 한 칸에 이어붙여서 누적, 10턴마다 자동 추가 ══ -->
+<div id="sumEditMod" class="fmod" style="display:none">
   <div class="fmod-header">
     <div class="fmod-title">장기기억</div>
-    <button class="iconbtn" onclick="closeSum()">✕</button>
-  </div>
-  <div class="fmod-body">
-    <div style="font-size:12px;color:#555;margin-bottom:14px;line-height:1.6">10턴마다 자동으로 그 구간이 요약돼서 쌓여. 100턴이 차면 그 10개를 하나의 종합 요약으로 압축해. 탭하면 편집돼.</div>
-    <div id="sumlist"></div>
-  </div>
-  <div class="fbtns">
-    <button class="fbtn" onclick="openSumEdit(null)">+ 새 요약</button>
-    <button class="fbtn primary" onclick="closeSum()">닫기</button>
-  </div>
-</div>
-
-<!-- ══ 장기기억 개별 편집 ══ -->
-<div id="sumEditMod" class="fmod" style="display:none;z-index:250">
-  <div class="fmod-header">
-    <div class="fmod-title" id="sumedit-title">장기기억 편집</div>
     <button class="iconbtn" onclick="closeSumEdit()">✕</button>
   </div>
   <div class="fmod-body" style="display:flex;flex-direction:column">
+    <div style="font-size:12px;color:#555;margin-bottom:10px;line-height:1.6">10턴마다 이 구간을 자동으로 요약해서 아래에 이어붙여. 100턴이 차면 그 구간을 하나로 압축해. 직접 수정해도 돼.</div>
     <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px">
       <label class="flabel" style="margin:0">내용</label>
       <span id="sumedit-count" style="font-size:11px;color:#555">0/20000</span>
@@ -457,7 +424,6 @@ input:checked+.slider:before{transform:translateX(16px)}
     <textarea id="sumedit-content" maxlength="20000" oninput="onSumEditInput()" style="flex:1;min-height:320px;resize:vertical;background:#0a0a0a;border:1px solid #333;border-radius:8px;padding:12px 14px;color:#eee;font-size:13px;line-height:1.7;outline:none;font-family:inherit"></textarea>
   </div>
   <div class="fbtns">
-    <button class="fbtn" style="color:#8b4040;border-color:#3a1a1a" onclick="deleteSumEdit()">삭제</button>
     <button class="fbtn primary" onclick="saveSumEdit()">저장</button>
   </div>
 </div>
@@ -569,15 +535,6 @@ function trimToSentence(t){
   if(i>s.length*0.5)return s.slice(0,i+1).trimEnd();
   return s;
 }
-function extractJSON(text){
-  if(!text)return null;
-  let t=text.replace(/```json|```/g,'').trim();
-  const arrMatch=t.match(/\[[\s\S]*\]/);
-  const objMatch=t.match(/\{[\s\S]*\}/);
-  const candidate=arrMatch?arrMatch[0]:(objMatch?objMatch[0]:t);
-  try{return JSON.parse(candidate);}catch(e){return null;}
-}
-
 /* ══════════════════════ IndexedDB 계층 ══════════════════════ */
 const DB_NAME='personaChatDB',DB_VER=1;
 function openDatabase(){
@@ -651,6 +608,16 @@ async function loadSettings(){
 }
 async function loadPersonas(){
   personas=await idbGetAll('personas')||[];
+  // 이전 버전엔 없던 필드라, 기존에 이미 쌓인 요약이 있는 페르소나는 진행 지점을 한 번 역산해서 채워준다.
+  // (없으면 다음 10턴 경계에서 처음부터 다시 요약하려다 조용히 멈춰버림)
+  for(const p of personas){
+    if(p.summarizedUpTo===undefined){
+      const ss=await idbGetAll('summaries','personaId',IDBKeyRange.only(p.id))||[];
+      const maxToTurn=ss.length?Math.max(...ss.map(s=>s.toTurn||0)):0;
+      p.summarizedUpTo=maxToTurn;
+      await idbPut('personas',p);
+    }
+  }
   personas.sort((a,b)=>(b.lastActive||b.createdAt||0)-(a.lastActive||a.createdAt||0));
 }
 
@@ -870,7 +837,7 @@ function doResetPersonaChat(){
       idbDeleteByIndex('summaries','personaId',IDBKeyRange.only(_editingId)),
     ]);
     const p=personas.find(x=>x.id===_editingId);
-    if(p){p.lastPreview='';p.turnCount=0;await idbPut('personas',p);}
+    if(p){p.lastPreview='';p.turnCount=0;p.summarizedUpTo=0;await idbPut('personas',p);}
     if(activePersonaId===_editingId){msgs=[];notes=[];summaries=[];renderAllMsgs();}
     renderHome();
     closeEditor();
@@ -996,8 +963,8 @@ function buildSys(p){
     const sorted=[...summaries].sort((a,b)=>(a.fromTurn||0)-(b.fromTurn||0));
     s+='\n\n[이전 대화 요약 — 맥락으로 참고할 것]\n'+sorted.map(sm=>(sm.fromTurn?`[${sm.fromTurn}-${sm.toTurn}턴]\n`:'')+sm.content).join('\n\n');
   }
-  const appliedNotes=notes.filter(n=>n.applied!==false);
-  if(appliedNotes.length)s+='\n\n[기억하는 것들]\n'+appliedNotes.map(n=>'- '+(n.content!==undefined?n.content:(n.key?n.key+': '+n.value:n.value))).join('\n');
+  const appliedNotes=notes.filter(n=>n.applied!==false&&n.content);
+  if(appliedNotes.length)s+='\n\n[유저 노트]\n'+appliedNotes.map(n=>n.content).join('\n\n');
   s+='\n\n[현재 시간 정보]\n'+getTC(p.name);
   return s;
 }
@@ -1223,38 +1190,6 @@ async function continueStream(am,partial,persona,provider,model,key,sys,liveBub)
 }
 
 /* ══════════════════════ 기억 추출 / 10턴 단위 요약 ══════════════════════ */
-async function extractMem(uMsg,aMsg,personaName){
-  if(!hasAnyKey())return;
-  const prompt=`다음은 사용자와 ${personaName}(AI 캐릭터) 사이의 롤플레이 대화다. 사용자에 대해 기억해둘 만한 정보를 최대 3개 추출해라.
-
-추출 대상 (적극적으로 찾을 것):
-- 사용자가 보인 감정 반응이나 특별한 태도 변화
-- 사용자가 먼저 한 행동이나 표현
-- 사용자의 취향·습관·개인 정보
-- 두 사람 사이 의미 있는 장면이나 대화
-
-사용자: "${uMsg}"
-${personaName}: "${aMsg}"
-
-JSON 배열로만 답할 것: ["기억할 내용1","기억할 내용2"]
-없다면 [] 만. 다른 텍스트 절대 없이 JSON만 출력할 것.`;
-  const txt=await smallCall(prompt,400);
-  if(!txt)return;
-  let arr=extractJSON(txt);
-  if(arr===null){
-    const retry=await smallCall('아래 텍스트에서 JSON 배열 부분만 추출해서, 다른 말 없이 그 JSON만 출력해:\n\n'+txt,400);
-    arr=extractJSON(retry);
-  }
-  if(!Array.isArray(arr))return;
-  for(const it of arr){
-    const content=typeof it==='string'?it.trim():(it&&it.value?String(it.value).trim():'');
-    if(!content)continue;
-    const now=Date.now();
-    const rec={personaId:activePersonaId,content,applied:true,updatedAt:now};
-    const id=await idbPut('memories',rec);
-    notes.push({id,...rec});
-  }
-}
 // 10턴마다 그 구간만 따로 요약해서 쌓아두고(레벨1), 100턴이 채워지면 그 10개를 하나의 종합 요약(레벨2)으로 압축한다.
 async function bumpTurnAndMaybeSummarize(p){
   p.turnCount=(p.turnCount||0)+1;
@@ -1263,7 +1198,9 @@ async function bumpTurnAndMaybeSummarize(p){
 }
 async function maybeSummarizeChunk(p){
   if(!hasAnyKey())return;
-  let summarizedUpTo=summaries.length?Math.max(...summaries.map(s=>s.toTurn||0)):0;
+  // 요약이 어디까지 진행됐는지는 summaries 배열이 아니라 persona.summarizedUpTo로 추적한다.
+  // (장기기억을 한 칸으로 직접 편집/저장하면 summaries가 통째로 교체되므로, 배열에서 역산하면 안 된다.)
+  let summarizedUpTo=p.summarizedUpTo||0;
   while((p.turnCount-summarizedUpTo)>=10){
     const fromTurn=summarizedUpTo+1,toTurn=summarizedUpTo+10;
     let assistantSeen=0,cutIdx=-1;
@@ -1294,6 +1231,8 @@ ${convText}
     for(const m of chunkMsgs){if(m.id)await idbDelete('messages',m.id);}
     msgs=rest;
     summarizedUpTo=toTurn;
+    p.summarizedUpTo=toTurn;
+    await idbPut('personas',p);
     await maybeRollupEpoch(p,toTurn);
   }
   renderAllMsgs();
@@ -1474,7 +1413,6 @@ async function send(){
     msgs.push({id:rid,personaId:activePersonaId,role:'assistant',content:reply,time:rnow});
     addAssistantActions(liveWrap,newIdx);
     await touchPersonaPreview(reply);
-    extractMem(content||'[이미지 전송]',reply,p.name);
     await bumpTurnAndMaybeSummarize(p);
   }catch(e){removeLiveBubble();addDOMError(e.message);}
   loading=false;document.getElementById('sbtn').disabled=false;
@@ -1551,128 +1489,60 @@ async function maybeFirstGreet(p){
   loading=false;document.getElementById('sbtn').disabled=false;
 }
 
-/* ══════════════════════ 유저노트 / 장기기억 패널 ══════════════════════ */
-function openMem(){renderMemList();document.getElementById('memOv').style.display='flex';}
-function closeMem(){document.getElementById('memOv').style.display='none';}
-function openSum(){renderSumList();document.getElementById('sumOv').style.display='flex';}
-function closeSum(){document.getElementById('sumOv').style.display='none';}
-
-function renderMemList(){
-  const list=document.getElementById('memlist');list.innerHTML='';
-  if(!notes.length){
-    list.innerHTML='<div style="color:#666;font-size:13px;text-align:center;padding:30px 0">아직 수집된 정보가 없어. "+ 새 노트"로 직접 추가해도 돼.</div>';
-    return;
-  }
-  notes.forEach(n=>{
-    const item=document.createElement('div');item.className='mitem';item.style.cursor='pointer';
-    if(n.applied===false)item.style.opacity='0.5';
-    item.onclick=()=>openMemEdit(n.id);
-    const preview=document.createElement('div');
-    preview.style.cssText='white-space:pre-wrap;overflow:hidden;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;font-size:13px;color:#ddd;line-height:1.6';
-    preview.textContent=n.content!==undefined?n.content:(n.key?n.key+': '+n.value:n.value)||'';
-    item.appendChild(preview);
-    if(n.applied===false){
-      const off=document.createElement('div');off.style.cssText='font-size:10px;color:#666;margin-top:6px';off.textContent='적용 안 함';
-      item.appendChild(off);
-    }
-    list.appendChild(item);
-  });
-}
-let _memEditId=null;
-function openMemEdit(id){
-  _memEditId=id;
-  const n=id?notes.find(x=>x.id===id):null;
-  document.getElementById('memedit-content').value=n?(n.content!==undefined?n.content:(n.key?n.key+': '+n.value:n.value))||'':'';
+/* ══════════════════════ 유저노트 / 장기기억 — 각각 한 칸짜리 통합 편집 ══════════════════════ */
+// 유저노트: 유저가 직접 쓰는 한 칸짜리 메모. 자동 추출 없음 — 항상 persona당 레코드 1개.
+function openMem(){
+  const n=notes[0];
+  document.getElementById('memedit-content').value=n?n.content||'':'';
   document.getElementById('memedit-applied').checked=n?(n.applied!==false):true;
   onMemEditInput();
   document.getElementById('memEditMod').style.display='flex';
 }
-function closeMemEdit(){document.getElementById('memEditMod').style.display='none';_memEditId=null;}
+function closeMemEdit(){document.getElementById('memEditMod').style.display='none';}
 function onMemEditInput(){
   document.getElementById('memedit-count').textContent=document.getElementById('memedit-content').value.length+'/10000';
 }
 async function saveMemEdit(){
   const content=document.getElementById('memedit-content').value.trim();
-  if(!content){alert('내용을 입력해줘.');return;}
   const applied=document.getElementById('memedit-applied').checked;
   const now=Date.now();
-  let n=_memEditId?notes.find(x=>x.id===_memEditId):null;
-  if(n){
-    n.content=content;n.applied=applied;n.updatedAt=now;delete n.key;delete n.value;
-    await idbPut('memories',n);
-  }else{
+  await idbDeleteByIndex('memories','personaId',IDBKeyRange.only(activePersonaId));
+  notes=[];
+  if(content){
     const rec={personaId:activePersonaId,content,applied,updatedAt:now};
     const id=await idbPut('memories',rec);
     notes.push({id,...rec});
   }
-  closeMemEdit();renderMemList();
+  closeMemEdit();showToastLite('저장됐어');
 }
 function copyMemEdit(){
   const v=document.getElementById('memedit-content').value;
   if(navigator.clipboard?.writeText)navigator.clipboard.writeText(v).then(()=>showToastLite('복사됐어')).catch(()=>{});
 }
-function deleteMemEdit(){
-  if(!_memEditId){closeMemEdit();return;}
-  showConf('이 노트를 삭제할까?',async()=>{
-    await idbDelete('memories',_memEditId);
-    notes=notes.filter(x=>x.id!==_memEditId);
-    closeMemEdit();renderMemList();
-  });
-}
 
-function renderSumList(){
-  const list=document.getElementById('sumlist');list.innerHTML='';
-  if(!summaries.length){
-    list.innerHTML='<div style="color:#666;font-size:13px;text-align:center;padding:30px 0">아직 요약된 내용이 없어. 10턴마다 자동으로 쌓여.</div>';
-    return;
-  }
+// 장기기억: 10턴마다 자동으로 구간 요약을 이어붙이고, 100턴마다 그 10개를 하나로 압축한다.
+// 화면에는 항상 이어붙인 내용 전체가 한 칸으로 보이고, 직접 수정도 가능하다.
+function openSum(){
   const sorted=[...summaries].sort((a,b)=>(a.fromTurn||0)-(b.fromTurn||0));
-  sorted.forEach(s=>{
-    const wrap=document.createElement('div');wrap.style.cssText='margin-bottom:20px;padding-bottom:16px;border-bottom:1px solid #1c1c1c;cursor:pointer';
-    wrap.onclick=()=>openSumEdit(s.id);
-    const label=s.fromTurn?`[${s.fromTurn}-${s.toTurn}턴]`+(s.level===2?' · 종합 요약':''):'이전 요약';
-    const head=document.createElement('div');
-    head.style.cssText='font-size:11px;margin-bottom:6px;font-weight:600;color:'+(s.level===2?'#e8c547':'#7a9fd4');
-    head.textContent=label;
-    const body=document.createElement('div');body.style.cssText='font-size:13px;color:#ddd;line-height:1.8;white-space:pre-wrap';body.textContent=s.content;
-    wrap.appendChild(head);wrap.appendChild(body);
-    list.appendChild(wrap);
-  });
-}
-let _sumEditId=null;
-function openSumEdit(id){
-  _sumEditId=id;
-  const s=id?summaries.find(x=>x.id===id):null;
-  document.getElementById('sumedit-title').textContent=s&&s.fromTurn?`장기기억 편집 (${s.fromTurn}-${s.toTurn}턴)`:'장기기억 편집';
-  document.getElementById('sumedit-content').value=s?s.content:'';
+  const text=sorted.map(s=>(s.fromTurn?`[${s.fromTurn}-${s.toTurn}턴]${s.level===2?' · 종합 요약':''}\n`:'')+s.content).join('\n\n');
+  document.getElementById('sumedit-content').value=text;
   onSumEditInput();
   document.getElementById('sumEditMod').style.display='flex';
 }
-function closeSumEdit(){document.getElementById('sumEditMod').style.display='none';_sumEditId=null;}
+function closeSumEdit(){document.getElementById('sumEditMod').style.display='none';}
 function onSumEditInput(){
   document.getElementById('sumedit-count').textContent=document.getElementById('sumedit-content').value.length+'/20000';
 }
 async function saveSumEdit(){
   const content=document.getElementById('sumedit-content').value.trim();
-  if(!content){alert('내용을 입력해줘.');return;}
-  let s=_sumEditId?summaries.find(x=>x.id===_sumEditId):null;
-  if(s){
-    s.content=content;
-    await idbPut('summaries',s);
-  }else{
+  await idbDeleteByIndex('summaries','personaId',IDBKeyRange.only(activePersonaId));
+  summaries=[];
+  if(content){
     const rec={personaId:activePersonaId,level:1,content,createdAt:Date.now()};
     const id=await idbPut('summaries',rec);
     summaries.push({id,...rec});
   }
-  closeSumEdit();renderSumList();
-}
-function deleteSumEdit(){
-  if(!_sumEditId){closeSumEdit();return;}
-  showConf('이 구간 요약을 삭제할까? 삭제하면 그 구간 기억은 완전히 사라져.',async()=>{
-    await idbDelete('summaries',_sumEditId);
-    summaries=summaries.filter(x=>x.id!==_sumEditId);
-    closeSumEdit();renderSumList();
-  });
+  closeSumEdit();showToastLite('저장됐어');
 }
 
 /* ══════════════════════ 설정 ══════════════════════ */
