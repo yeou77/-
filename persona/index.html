@@ -438,6 +438,7 @@ input:checked+.slider:before{transform:translateX(16px)}
     <div id="sumlist"></div>
   </div>
   <div class="fbtns">
+    <button class="fbtn" onclick="openSumEdit(null)">+ 새 요약</button>
     <button class="fbtn primary" onclick="closeSum()">닫기</button>
   </div>
 </div>
@@ -1641,7 +1642,7 @@ function renderSumList(){
 let _sumEditId=null;
 function openSumEdit(id){
   _sumEditId=id;
-  const s=summaries.find(x=>x.id===id);
+  const s=id?summaries.find(x=>x.id===id):null;
   document.getElementById('sumedit-title').textContent=s&&s.fromTurn?`장기기억 편집 (${s.fromTurn}-${s.toTurn}턴)`:'장기기억 편집';
   document.getElementById('sumedit-content').value=s?s.content:'';
   onSumEditInput();
@@ -1654,14 +1655,19 @@ function onSumEditInput(){
 async function saveSumEdit(){
   const content=document.getElementById('sumedit-content').value.trim();
   if(!content){alert('내용을 입력해줘.');return;}
-  const s=summaries.find(x=>x.id===_sumEditId);
-  if(!s)return;
-  s.content=content;
-  await idbPut('summaries',s);
+  let s=_sumEditId?summaries.find(x=>x.id===_sumEditId):null;
+  if(s){
+    s.content=content;
+    await idbPut('summaries',s);
+  }else{
+    const rec={personaId:activePersonaId,level:1,content,createdAt:Date.now()};
+    const id=await idbPut('summaries',rec);
+    summaries.push({id,...rec});
+  }
   closeSumEdit();renderSumList();
 }
 function deleteSumEdit(){
-  if(!_sumEditId)return;
+  if(!_sumEditId){closeSumEdit();return;}
   showConf('이 구간 요약을 삭제할까? 삭제하면 그 구간 기억은 완전히 사라져.',async()=>{
     await idbDelete('summaries',_sumEditId);
     summaries=summaries.filter(x=>x.id!==_sumEditId);
