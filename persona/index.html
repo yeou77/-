@@ -567,10 +567,20 @@ async function setLockPassword(pw){
   localStorage.setItem('personaUnlockedFor',h);
 }
 function noSpLen(s){return s.replace(/\s/g,'').length;}
-function atSentEnd(s){return /[.!?"。]\s*$/.test(s);}
+function atSentEnd(s){
+  const t=s.trimEnd();
+  if(!t)return false;
+  if(t[t.length-1]==='"'){
+    // 따옴표로 끝났다고 무조건 "문장이 끝났다"고 보면, 방금 막 새로 연 빈 따옴표("...서술.\n\n" 처럼
+    // 대사가 시작되자마자 끊긴 경우)까지 "끝난 문장"으로 착각해서 그대로 잘라버리게 된다.
+    // 전체 텍스트의 따옴표 개수가 짝수(열고 닫음이 맞음)일 때만 진짜로 끝난 걸로 본다.
+    return (t.match(/"/g)||[]).length%2===0;
+  }
+  return /[.!?。]$/.test(t);
+}
 function trimToSentence(t){
   const s=t.trimEnd();
-  if(/[.!?。"]$/.test(s))return s;
+  if(atSentEnd(s))return s;
   if(noSpLen(s)<200)return s;
   const i=Math.max(s.lastIndexOf('.'),s.lastIndexOf('!'),s.lastIndexOf('?'),s.lastIndexOf('"'));
   if(i>s.length*0.5)return s.slice(0,i+1).trimEnd();
@@ -1094,7 +1104,7 @@ async function callClaudeStream(am,img,sys,model,key,onDelta){
   }catch(e){if(e.name!=='AbortError')throw e;}
   return acc;
 }
-async function callGeminiStream(am,img,sys,model,key,onDelta){
+async function callGeminiStream(am,img,sys,model,key,onDelta,thinkingBudget){
   const ctrl=new AbortController();
   const gm=am.map((m,i)=>{
     const role=m.role==='assistant'?'model':'user';
@@ -1106,7 +1116,7 @@ async function callGeminiStream(am,img,sys,model,key,onDelta){
   // 대신 thinkingBudget으로 생각 자체를 어느정도 제한해둔다 — 안 그러면 생각이 한없이 길어져서
   // (a) 화면엔 아무것도 안 뜨는 채로 체감 로딩이 너무 길어지고, (b) 운 나쁘면 생각만 하다 예산을 다 써서
   // 진짜 답변은 한 글자도 못 내놓는 빈 응답이 나온다. 0으로 완전히 끄면 글이 부실해져서 아예 끄진 않는다.
-  const r=await fetchWithRetry(`https://generativelanguage.googleapis.com/v1beta/models/${model}:streamGenerateContent?key=${key}`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({system_instruction:{parts:[{text:sys}]},contents:gm,generationConfig:{maxOutputTokens:8000,temperature:1.0,thinkingConfig:{thinkingBudget:1024}},safetySettings:[{category:'HARM_CATEGORY_SEXUALLY_EXPLICIT',threshold:'BLOCK_NONE'},{category:'HARM_CATEGORY_HATE_SPEECH',threshold:'BLOCK_NONE'},{category:'HARM_CATEGORY_HARASSMENT',threshold:'BLOCK_NONE'},{category:'HARM_CATEGORY_DANGEROUS_CONTENT',threshold:'BLOCK_NONE'}]}),signal:ctrl.signal});
+  const r=await fetchWithRetry(`https://generativelanguage.googleapis.com/v1beta/models/${model}:streamGenerateContent?key=${key}`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({system_instruction:{parts:[{text:sys}]},contents:gm,generationConfig:{maxOutputTokens:8000,temperature:1.0,thinkingConfig:{thinkingBudget:thinkingBudget!==undefined?thinkingBudget:1024}},safetySettings:[{category:'HARM_CATEGORY_SEXUALLY_EXPLICIT',threshold:'BLOCK_NONE'},{category:'HARM_CATEGORY_HATE_SPEECH',threshold:'BLOCK_NONE'},{category:'HARM_CATEGORY_HARASSMENT',threshold:'BLOCK_NONE'},{category:'HARM_CATEGORY_DANGEROUS_CONTENT',threshold:'BLOCK_NONE'}]}),signal:ctrl.signal});
   if(!r.ok){const{d,t}=await readErrBody(r);throw new Error(apiErrMsg('Gemini',d,r.status,t));}
   const reader=r.body.getReader(),decoder=new TextDecoder();
   let acc='',buf='',regexPos=0;
@@ -1214,10 +1224,10 @@ async function smallCall(prompt,maxTokens){
 }
 
 /* ══════════════════════ 답변 생성 (스트리밍 + 이어쓰기) ══════════════════════ */
-async function callProviderStream(provider,am,img,sys,model,key,onDelta){
+async function callProviderStream(provider,am,img,sys,model,key,onDelta,thinkingBudget){
   const cfg=PROVIDERS[provider];
   if(cfg.kind==='anthropic')return callClaudeStream(am,img,sys,model,key,onDelta);
-  if(cfg.kind==='google')return callGeminiStream(am,img,sys,model,key,onDelta);
+  if(cfg.kind==='google')return callGeminiStream(am,img,sys,model,key,onDelta,thinkingBudget);
   return callOpenAICompatStream(am,img,sys,model,key,cfg.baseUrl,cfg.label,onDelta);
 }
 async function getReplyStream(am,img,persona,liveBub){
@@ -1265,7 +1275,9 @@ async function continueStream(am,partial,persona,provider,model,key,sys,liveBub)
   }
   let extra='';
   try{
-    extra=await callProviderStream(provider,contAm,undefined,sys,model,key,onDelta);
+    // 문장 하나 마저 끝내는 것뿐이라 깊이 생각할 필요가 없다 — 예산을 넉넉히 주면 오히려
+    // 다시 한참 생각하다가 이 이어쓰기 요청마저 빈 응답으로 끝나버리는 경우가 있었다.
+    extra=await callProviderStream(provider,contAm,undefined,sys,model,key,onDelta,128);
   }catch(e){}
   return partial+extra;
 }
@@ -1366,11 +1378,14 @@ function scrollChatInstant(){
   c.style.scrollBehavior=prev;
 }
 
-function makeMsgWrap(role,content,time,idx,animate){
+function makeMsgWrap(role,content,time,idx,animate,imgUrl){
   const p=personas.find(x=>x.id===activePersonaId);
   const wrap=document.createElement('div');wrap.className='mwrap '+role+(animate?' manim':'');
   const name=document.createElement('div');name.className='mname';name.textContent=role==='assistant'?(p?p.name:''):(userAlias||'나');
-  const bub=document.createElement('div');bub.className='bubble '+role;bub.textContent=role==='assistant'?fmtReply(content):content;
+  const bub=document.createElement('div');bub.className='bubble '+role;
+  if(imgUrl){const im=document.createElement('img');im.src=imgUrl;im.style.cssText='max-width:200px;border-radius:8px;margin-bottom:4px;display:block';bub.appendChild(im);}
+  const text=role==='assistant'?fmtReply(content):content;
+  if(text){const tx=document.createElement('span');tx.textContent=text;bub.appendChild(tx);}
   const t=document.createElement('div');t.className='mtime';t.textContent=time?ft(time):'';
   wrap.appendChild(name);wrap.appendChild(bub);wrap.appendChild(t);
   if(role==='user'||role==='assistant'){
@@ -1433,7 +1448,7 @@ function renderAllMsgs(){
   }
   msgs.forEach((m,i)=>{
     if(i===0||!sameDay(msgs[i-1].time,m.time)){const dd=document.createElement('div');dd.className='datediv';dd.textContent=fd(m.time);chat.appendChild(dd);}
-    chat.appendChild(makeMsgWrap(m.role,m.content,m.time,i));
+    chat.appendChild(makeMsgWrap(m.role,m.content,m.time,i,false,m.img));
   });
   scrollChat();
 }
@@ -1493,8 +1508,10 @@ async function send(){
   const img=pendingImg;clearImg();
   const now=Date.now();
   addDOMUser(content,img,now);
-  const uid=await idbPut('messages',{personaId:activePersonaId,role:'user',content:content||(img?'[이미지]':''),time:now});
-  msgs.push({id:uid,personaId:activePersonaId,role:'user',content:content||(img?'[이미지]':''),time:now});
+  const umsg={personaId:activePersonaId,role:'user',content:content||(img?'[이미지]':''),time:now};
+  if(img)umsg.img=img.dataUrl; // 재렌더링(요약 청크 경계, 화면 재진입 등) 후에도 사진이 안 사라지게 같이 저장해둔다.
+  const uid=await idbPut('messages',umsg);
+  msgs.push({id:uid,...umsg});
   const{wrap:liveWrap,bub:liveBub,t:liveT}=showLiveBubble();
   try{
     const am=msgs.slice(-40).map(m=>({role:m.role,content:m.content}));
