@@ -953,7 +953,7 @@ async function openChat(id){
   renderAllMsgs();
   showView('chat');
   syncChatBgLayer(); // showView 전엔 #chatscreen이 display:none이라 #chat의 rect가 0이었으므로, 보인 다음 다시 계산
-  scrollChat(); // 마찬가지로 숨겨진 상태에서 scrollTop=scrollHeight을 해봤자 0이라 안 먹힌다. 보인 다음 다시 맨 아래로.
+  scrollChatInstant(); // 마찬가지로 숨겨진 상태에서 scrollTop=scrollHeight을 해봤자 0이라 안 먹힌다. 보인 다음 다시 맨 아래로, 애니메이션 없이 즉시.
   const last=msgs[msgs.length-1];
   if(msgs.length===0&&p.greeting){
     addGreetingMsg(p.greeting);
@@ -1355,6 +1355,16 @@ function ft(ts){return new Intl.DateTimeFormat('ko-KR',{hour:'2-digit',minute:'2
 function fd(ts){return new Intl.DateTimeFormat('ko-KR',{year:'numeric',month:'long',day:'numeric',weekday:'short'}).format(new Date(ts));}
 function sameDay(a,b){const da=new Date(a),db=new Date(b);return da.getFullYear()===db.getFullYear()&&da.getMonth()===db.getMonth()&&da.getDate()===db.getDate();}
 function scrollChat(){const c=document.getElementById('chat');c.scrollTop=c.scrollHeight;}
+// #chat은 CSS로 scroll-behavior:smooth가 걸려 있어서, 채팅을 열자마자 맨 아래로 보내는 용도로 scrollChat()을
+// 쓰면 "부드럽게 스크롤"되다가 끝나기 전에 뭔가에 끊겨서 중간에 멈춰버릴 수 있다(실제로 재현됨).
+// 채팅을 여는 순간엔 애니메이션 없이 즉시 맨 아래로 가야 하므로 스크롤 방식을 잠깐 꺼두고 이동한다.
+function scrollChatInstant(){
+  const c=document.getElementById('chat');
+  const prev=c.style.scrollBehavior;
+  c.style.scrollBehavior='auto';
+  c.scrollTop=c.scrollHeight;
+  c.style.scrollBehavior=prev;
+}
 
 function makeMsgWrap(role,content,time,idx,animate){
   const p=personas.find(x=>x.id===activePersonaId);
