@@ -1100,7 +1100,9 @@ async function callGeminiStream(am,img,sys,model,key,onDelta){
     if(i===am.length-1&&img&&m.role==='user'){return{role,parts:[{inline_data:{mime_type:img.mime,data:img.b64}},{text:m.content}]};}
     return{role,parts:[{text:m.content}]};
   });
-  const r=await fetchWithRetry(`https://generativelanguage.googleapis.com/v1beta/models/${model}:streamGenerateContent?key=${key}`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({system_instruction:{parts:[{text:sys}]},contents:gm,generationConfig:{maxOutputTokens:2500,temperature:1.0},safetySettings:[{category:'HARM_CATEGORY_SEXUALLY_EXPLICIT',threshold:'BLOCK_NONE'},{category:'HARM_CATEGORY_HATE_SPEECH',threshold:'BLOCK_NONE'},{category:'HARM_CATEGORY_HARASSMENT',threshold:'BLOCK_NONE'},{category:'HARM_CATEGORY_DANGEROUS_CONTENT',threshold:'BLOCK_NONE'}]}),signal:ctrl.signal});
+  // maxOutputTokens는 화면에 안 보이는 "생각(thought)" 토큰까지 합친 총량이라, 너무 낮게 잡으면
+  // 생각하다가 답이 다 안 끝난 채로 끊겨버린다(중간에 문장이 잘림). 여유 있게 잡아둔다.
+  const r=await fetchWithRetry(`https://generativelanguage.googleapis.com/v1beta/models/${model}:streamGenerateContent?key=${key}`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({system_instruction:{parts:[{text:sys}]},contents:gm,generationConfig:{maxOutputTokens:8000,temperature:1.0},safetySettings:[{category:'HARM_CATEGORY_SEXUALLY_EXPLICIT',threshold:'BLOCK_NONE'},{category:'HARM_CATEGORY_HATE_SPEECH',threshold:'BLOCK_NONE'},{category:'HARM_CATEGORY_HARASSMENT',threshold:'BLOCK_NONE'},{category:'HARM_CATEGORY_DANGEROUS_CONTENT',threshold:'BLOCK_NONE'}]}),signal:ctrl.signal});
   if(!r.ok){const{d,t}=await readErrBody(r);throw new Error(apiErrMsg('Gemini',d,r.status,t));}
   const reader=r.body.getReader(),decoder=new TextDecoder();
   let acc='',buf='',regexPos=0;
@@ -1163,17 +1165,18 @@ async function callOpenAICompatStream(am,img,sys,model,key,baseUrl,label,onDelta
 async function callNonStream(provider,model,key,sys,am){
   const cfg=PROVIDERS[provider];
   if(cfg.kind==='anthropic'){
-    const r=await fetchWithRetry('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json','x-api-key':key,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},body:JSON.stringify({model,max_tokens:1500,system:sys,messages:am})});
+    const r=await fetchWithRetry('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json','x-api-key':key,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},body:JSON.stringify({model,max_tokens:4000,system:sys,messages:am})});
     const d=await r.json();if(d.error)throw new Error(cfg.label+': '+d.error.message);return d.content?.[0]?.text||'';
   }
   if(cfg.kind==='openai'){
-    const r=await fetchWithRetry(cfg.baseUrl+'/chat/completions',{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+key},body:JSON.stringify({model,max_tokens:1500,messages:[{role:'system',content:sys},...am]})});
+    const r=await fetchWithRetry(cfg.baseUrl+'/chat/completions',{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+key},body:JSON.stringify({model,max_tokens:4000,messages:[{role:'system',content:sys},...am]})});
     const d=await r.json();if(d.error)throw new Error(cfg.label+': '+(d.error.message||JSON.stringify(d.error)));return d.choices?.[0]?.message?.content||'';
   }
   const gm=am.map(m=>({role:m.role==='assistant'?'model':'user',parts:[{text:m.content}]}));
-  const r=await fetchWithRetry(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${key}`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({system_instruction:{parts:[{text:sys}]},contents:gm,generationConfig:{maxOutputTokens:2500,temperature:1.0}})});
+  const r=await fetchWithRetry(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${key}`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({system_instruction:{parts:[{text:sys}]},contents:gm,generationConfig:{maxOutputTokens:8000,temperature:1.0}})});
   const d=await r.json();if(d.error)throw new Error(cfg.label+': '+d.error.message);
-  return d.candidates?.[0]?.content?.parts?.[0]?.text||'';
+  const parts=d.candidates?.[0]?.content?.parts||[];
+  return parts.filter(p=>!p.thought).map(p=>p.text||'').join('');
 }
 async function smallCall(prompt,maxTokens){
   const order=[resolveProvider(personas.find(x=>x.id===activePersonaId)||{}),...PROVIDER_ORDER];
