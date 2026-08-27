@@ -5,3 +5,4 @@ bitsandbytes>=0.43
 accelerate>=0.31
 datasets>=2.19
 sentencepiece
+together>=1.3

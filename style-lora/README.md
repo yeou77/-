@@ -75,6 +75,19 @@ python scripts/train_lora.py \
   사용 전 해당 모델의 라이선스(상업적 이용 가능 여부 등)를 반드시 확인.
 - 기본값은 4bit QLoRA, rank 16 — VRAM 24GB 이하에서도 돌아가도록 설정.
 
+### (대안) Together.ai로 학습 — GPU 클릭 없이
+
+직접 GPU를 붙잡고 있기 귀찮으면 `notebook/colab_together.ipynb`를 대신 쓴다.
+GPU 런타임도 필요 없다 (Colab은 그냥 API 요청을 보내는 통로 역할만 함, 실제 학습은
+Together 클라우드에서 돎). 셀 하나(`scripts/train_together.py`)가 업로드 → 학습 시작
+→ 진행 확인 → 결과 다운로드까지 전부 처리한다.
+
+- Together 계정에 결제수단/크레딧 등록 필요, API Keys 메뉴에서 키 발급.
+- 사용 전 Together의 fine-tuning 지원 모델 목록에 `--model`로 쓸 모델이 있는지 확인.
+- 학습마다 비용이 청구된다 (RUN_LOG.md에 기록해두면 좋음).
+- 결과 어댑터를 다운로드하지 못하는 경우도 있음 — 그때는 RUN_LOG.md의 이식성
+  체크리스트를 보고, 같은 코퍼스로 로컬/Colab GPU 학습(`train_lora.py`)으로 넘어간다.
+
 ### 평가: base vs +lora 비교
 
 ```bash
