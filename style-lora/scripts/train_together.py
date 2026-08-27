@@ -104,11 +104,26 @@ def main():
     print("\n학습 완료. 어댑터 다운로드 시도...")
     out_path = Path(args.download_to)
     out_path.parent.mkdir(parents=True, exist_ok=True)
+
+    download_fn = None
+    for attr_name in ("download", "download_model", "download_checkpoint"):
+        candidate = getattr(client.fine_tuning, attr_name, None)
+        if callable(candidate):
+            download_fn = candidate
+            break
+
+    if download_fn is None:
+        available = [m for m in dir(client.fine_tuning) if not m.startswith("_")]
+        print("다운로드 함수를 SDK에서 찾지 못했습니다 (RUN_LOG.md 이식성 체크리스트 참고).")
+        print(f"client.fine_tuning에 실제로 있는 메서드: {available}")
+        print(f"job_id={job_id} 는 기록해두고, Together 대시보드에서 수동 다운로드 가능한지 확인하세요.")
+        return
+
     try:
-        client.fine_tuning.download(id=job_id, output=str(out_path))
+        download_fn(id=job_id, output=str(out_path))
         print(f"다운로드 완료: {out_path}")
     except Exception as e:
-        print(f"다운로드 실패 (RUN_LOG.md의 이식성 체크리스트 참고): {e}")
+        print(f"다운로드 실패: {e}")
         print(f"job_id={job_id} 는 기록해두고, Together 대시보드에서 수동 다운로드 가능한지 확인하세요.")
 
 
