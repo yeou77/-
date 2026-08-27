@@ -1,0 +1,10 @@
+__pycache__/
+*.pyc
+.venv/
+.ipynb_checkpoints/
+
+# style-lora: never commit source novel text or trained weights
+style-lora/data/raw/*
+!style-lora/data/raw/.gitkeep
+style-lora/data/processed/
+style-lora/outputs/
