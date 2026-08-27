@@ -10,9 +10,12 @@ Usage:
     python train_together.py --api-key-file /path/to/key.txt \
         --model Qwen/Qwen3.5-9B
 
-This is a first pass against Together's API — if a call fails, the raw
-error response is printed so the exact field name/format can be fixed
-without guessing blind.
+Trains on explicit prompt(~800 chars) -> completion(~400 chars) pairs, not
+raw text blobs — a model trained only on "continue this huge chunk" doesn't
+generalize well to "here's one line, write a scene." When testing the
+result, feed it a similarly long prompt (a real scene, several lines), not
+a single short sentence — otherwise it's out of the distribution it was
+actually trained on and will ramble or repeat.
 """
 import argparse
 import json
@@ -24,24 +27,45 @@ TRAIN_CORPUS = Path(__file__).resolve().parent.parent / "data" / "processed" / "
 JSONL_OUT = Path(__file__).resolve().parent.parent / "data" / "processed" / "together_train.jsonl"
 
 
-def build_jsonl(chunk_chars: int) -> int:
+def build_pair_jsonl(prompt_chars: int, completion_chars: int) -> int:
+    """Builds explicit {"prompt": ..., "completion": ...} examples instead of
+    raw text blobs. A model fine-tuned only on long continuous chunks learns
+    "given a lot of context, continue" — not "given one short line, write a
+    scene," which is how we actually want to use it. Training on short
+    prompt -> short completion pairs matches the intended usage."""
     text = TRAIN_CORPUS.read_text(encoding="utf-8")
     paragraphs = [p.strip() for p in text.split("\n\n") if p.strip()]
 
-    chunks, current = [], ""
+    target = prompt_chars + completion_chars
+    pairs = []
+    buf: list[str] = []
+    buf_len = 0
+
     for p in paragraphs:
-        if current and len(current) + len(p) > chunk_chars:
-            chunks.append(current)
-            current = p
-        else:
-            current = f"{current}\n\n{p}" if current else p
-    if current:
-        chunks.append(current)
+        buf.append(p)
+        buf_len += len(p) + 2
+        if buf_len < target:
+            continue
+
+        cum = 0
+        split_idx = len(buf)
+        for i, seg in enumerate(buf):
+            cum += len(seg) + 2
+            if cum >= prompt_chars:
+                split_idx = i + 1
+                break
+
+        prompt_text = "\n\n".join(buf[:split_idx])
+        completion_text = "\n\n".join(buf[split_idx:])
+        if prompt_text and completion_text:
+            pairs.append({"prompt": prompt_text, "completion": completion_text})
+        buf = []
+        buf_len = 0
 
     with JSONL_OUT.open("w", encoding="utf-8") as f:
-        for c in chunks:
-            f.write(json.dumps({"text": c}, ensure_ascii=False) + "\n")
-    return len(chunks)
+        for pr in pairs:
+            f.write(json.dumps(pr, ensure_ascii=False) + "\n")
+    return len(pairs)
 
 
 def main():
@@ -51,7 +75,8 @@ def main():
     ap.add_argument("--epochs", type=int, default=3)
     ap.add_argument("--lora-r", type=int, default=16)
     ap.add_argument("--lora-alpha", type=int, default=32)
-    ap.add_argument("--chunk-chars", type=int, default=3000)
+    ap.add_argument("--prompt-chars", type=int, default=800)
+    ap.add_argument("--completion-chars", type=int, default=400)
     ap.add_argument("--poll-seconds", type=int, default=30)
     ap.add_argument("--download-to", default="../outputs/style-lora-together.tar.zst")
     args = ap.parse_args()
@@ -67,8 +92,8 @@ def main():
     api_key = Path(args.api_key_file).read_text(encoding="utf-8").strip()
     client = Together(api_key=api_key)
 
-    n_chunks = build_jsonl(args.chunk_chars)
-    print(f"학습용 JSONL {n_chunks}개 청크 -> {JSONL_OUT}")
+    n_pairs = build_pair_jsonl(args.prompt_chars, args.completion_chars)
+    print(f"학습용 JSONL {n_pairs}개 prompt/completion 쌍 -> {JSONL_OUT}")
 
     print("파일 업로드 중...")
     file_resp = client.files.upload(file=str(JSONL_OUT), check=True)
