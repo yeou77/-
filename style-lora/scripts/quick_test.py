@@ -24,13 +24,16 @@ def main():
     ap.add_argument("--max_new_tokens", type=int, default=200)
     args = ap.parse_args()
 
-    tokenizer = AutoTokenizer.from_pretrained(args.base_model)
+    tokenizer = AutoTokenizer.from_pretrained(args.base_model, trust_remote_code=True)
     if tokenizer.pad_token is None:
         tokenizer.pad_token = tokenizer.eos_token
 
     bnb_config = BitsAndBytesConfig(load_in_4bit=True, bnb_4bit_compute_dtype=torch.bfloat16)
     base = AutoModelForCausalLM.from_pretrained(
-        args.base_model, quantization_config=bnb_config, device_map="auto"
+        args.base_model,
+        quantization_config=bnb_config,
+        device_map="auto",
+        trust_remote_code=True,
     )
     model = PeftModel.from_pretrained(base, args.adapter_dir)
 
