@@ -8,7 +8,7 @@ Needs data/processed/train_corpus.txt to already exist (run
 
 Usage:
     python train_together.py --api-key-file /path/to/key.txt \
-        --model beomi/Llama-3-Open-Ko-8B-Instruct-preview
+        --model Qwen/Qwen3.5-9B
 
 This is a first pass against Together's API — if a call fails, the raw
 error response is printed so the exact field name/format can be fixed
@@ -47,7 +47,7 @@ def build_jsonl(chunk_chars: int) -> int:
 def main():
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--api-key-file", required=True, help="Together API 키가 담긴 파일 경로")
-    ap.add_argument("--model", default="beomi/Llama-3-Open-Ko-8B-Instruct-preview")
+    ap.add_argument("--model", default="Qwen/Qwen3.5-9B")
     ap.add_argument("--epochs", type=int, default=3)
     ap.add_argument("--lora-r", type=int, default=16)
     ap.add_argument("--lora-alpha", type=int, default=32)
