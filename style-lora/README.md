@@ -26,40 +26,36 @@
     RTX 3090/4090 인스턴스)
   - 두 권 분량이면 학습 자체는 보통 1~3시간, 비용은 GPU 대여료 기준 몇 천 원대
 
-## 사용 순서
+## 사용 순서 (가장 쉬운 경로)
+
+두 소설을 통째로 `data/raw/`에 넣고, Colab에서 노트북을 위에서부터 실행하면 끝난다.
+챕터/문단을 직접 나누거나 평가용 문단을 손으로 고르는 과정은 없음 — 전부 자동.
 
 ```bash
 cd style-lora
 pip install -r requirements.txt
+
+# data/raw/에 book1.txt, book2.txt (소설 통째로) 넣은 뒤:
+python scripts/preprocess.py auto
 ```
 
-### 1) 챕터/문단 분리 + 평가 후보 추출
+- `data/raw/*.txt`를 챕터/문단 단위로 자동 분리하고, 평가용 문단 20개를 무작위로
+  떼어(`--eval-n`으로 개수 조절) 나머지로 `data/processed/train_corpus.txt`(학습용)와
+  `data/processed/eval_set.jsonl`(평가용)을 바로 만든다. 다음 단계인 학습으로 바로 넘어가면 됨.
+
+### (선택) 더 정교하게: 평가 문단을 직접 고르고 싶다면
+
+무작위 대신 "이 호흡이다" 싶은 문단을 직접 골라 평가 기준으로 삼고 싶으면 이 방식을 대신 쓴다:
 
 ```bash
-python scripts/preprocess.py candidates
-```
-
-- `data/raw/*.txt`를 챕터 단위로 자르고 (`data/processed/<book>/chapters/`),
-  문단 단위로 지문/대사/심리를 대략 자동 분류해 `data/processed/paragraphs.jsonl`에 저장.
-- 책 x 태그 조합별 상위 15개(`--per-group`로 조절)를 `data/processed/eval_candidates.jsonl`에
-  후보로 뽑아둔다. 자동 분류는 정확하지 않으니 참고용.
-
-### 2) 평가 세트 30개 직접 고르기
-
-`eval_candidates.jsonl`을 열어서 "이 호흡이다" 싶은 문단을 지문/대사/심리 섞어서
-~30개 고르고, 그 `id` 값만 한 줄씩 `eval_selected.txt`에 저장한다. 이게 나중에
-"로라가 합격인지" 판단하는 기준선이 된다 — 숫자 벤치마크가 아니라 네 눈이 기준.
-
-### 3) 평가 세트를 제외한 학습 코퍼스 생성
-
-```bash
+python scripts/preprocess.py candidates   # 책 x 지문/대사/심리별 후보 추출
+# data/processed/eval_candidates.jsonl을 열어 ~30개 id를 골라 eval_selected.txt에 한 줄씩 저장
 python scripts/preprocess.py build --eval-ids eval_selected.txt
 ```
 
-`data/processed/train_corpus.txt`(학습용, 평가 문단 제외)와
-`data/processed/eval_set.jsonl`(평가용)이 생성된다.
+두 방식 모두 결과물은 동일하게 `train_corpus.txt` / `eval_set.jsonl`이라 이후 단계는 같다.
 
-### 4) 클라우드에서 QLoRA 학습
+### 클라우드에서 QLoRA 학습
 
 로컬 노트북 내장 그래픽으로는 불가능 — Colab/RunPod에서 실행. `notebook/colab_quickstart.ipynb`
 참고하거나 직접:
@@ -68,7 +64,7 @@ python scripts/preprocess.py build --eval-ids eval_selected.txt
 python scripts/train_lora.py \
     --model_name beomi/Llama-3-Open-Ko-8B-Instruct-preview \
     --train_file data/processed/train_corpus.txt \
-    --output_dir outputs/geoneomulnyeo-lora
+    --output_dir outputs/style-lora
 ```
 
 - 두 작품을 하나의 코퍼스로 합쳐서 학습 (같은 작가라 문체 결이 같음).
@@ -79,14 +75,14 @@ python scripts/train_lora.py \
   사용 전 해당 모델의 라이선스(상업적 이용 가능 여부 등)를 반드시 확인.
 - 기본값은 4bit QLoRA, rank 16 — VRAM 24GB 이하에서도 돌아가도록 설정.
 
-### 5) 평가: base vs +lora 비교
+### 평가: base vs +lora 비교
 
 ```bash
-python scripts/eval.py --lora_dir outputs/geoneomulnyeo-lora --out outputs/eval_report.md
+python scripts/eval.py --lora_dir outputs/style-lora --out outputs/eval_report.md
 ```
 
-2단계에서 고른 평가 문단의 첫 문장을 프롬프트로 써서, 베이스 모델과 LoRA 적용
-모델의 이어쓰기를 나란히 리포트로 뽑는다. 점수는 자동으로 매기지 않는다 —
+떼어둔 평가 문단(자동이든 직접 골랐든)의 첫 문장을 프롬프트로 써서, 베이스 모델과
+LoRA 적용 모델의 이어쓰기를 나란히 리포트로 뽑는다. 점수는 자동으로 매기지 않는다 —
 읽어보고 "이 쪽 문체네" 싶은지 직접 판단.
 
 ## 기대치

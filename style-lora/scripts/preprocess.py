@@ -1,22 +1,24 @@
 """
-Splits raw novel .txt files into chapters/paragraphs, tags paragraphs with a
-rough style category (dialogue / interior monologue / narration) to speed up
-picking an eval set, and builds the final training corpus once you've picked
-which paragraphs to hold out.
+Splits raw novel .txt files into chapters/paragraphs and builds a training
+corpus with a small evaluation set automatically held out.
 
-Usage:
-    # 1) drop book1.txt, book2.txt into data/raw/, then:
+Easiest path — one command, no manual picking:
+    # drop book1.txt, book2.txt (full novels) into data/raw/, then:
+    python preprocess.py auto
+
+That writes data/processed/train_corpus.txt and eval_set.jsonl directly,
+with the eval paragraphs chosen by random sample (not by hand).
+
+If you'd rather hand-pick which paragraphs represent the style best, use
+the two-step version instead:
     python preprocess.py candidates
-
-    # 2) open data/processed/eval_candidates.jsonl, pick ~30 paragraph ids
-    #    you like (mix of dialogue/psych/narration, both books), and save
-    #    just their "id" values one per line into eval_selected.txt
-
-    # 3) build the training corpus with those paragraphs held out
+    # open data/processed/eval_candidates.jsonl, pick ~30 ids you like,
+    # save them one per line into eval_selected.txt
     python preprocess.py build --eval-ids eval_selected.txt
 """
 import argparse
 import json
+import random
 import re
 from pathlib import Path
 
@@ -61,7 +63,7 @@ def tag_paragraph(p: str) -> str:
     return "지문"
 
 
-def cmd_candidates(args):
+def collect_paragraphs() -> list[dict]:
     OUT_DIR.mkdir(parents=True, exist_ok=True)
     books = sorted(RAW_DIR.glob("*.txt"))
     if not books:
@@ -97,6 +99,49 @@ def cmd_candidates(args):
         for p in all_paragraphs:
             f.write(json.dumps(p, ensure_ascii=False) + "\n")
 
+    print(f"\n총 {len(all_paragraphs)}개 문단 -> {para_path}")
+    return all_paragraphs
+
+
+def write_train_and_eval(all_paragraphs: list[dict], eval_ids: set[str]) -> None:
+    train_lines = [p["text"] for p in all_paragraphs if p["id"] not in eval_ids]
+    eval_paragraphs = [p for p in all_paragraphs if p["id"] in eval_ids]
+
+    train_corpus_path = OUT_DIR / "train_corpus.txt"
+    train_corpus_path.write_text("\n\n".join(train_lines), encoding="utf-8")
+
+    eval_set_path = OUT_DIR / "eval_set.jsonl"
+    with eval_set_path.open("w", encoding="utf-8") as f:
+        for p in eval_paragraphs:
+            f.write(json.dumps(p, ensure_ascii=False) + "\n")
+
+    print(f"학습 코퍼스: {len(train_lines)}개 문단 -> {train_corpus_path}")
+    print(f"평가 세트: {len(eval_paragraphs)}개 문단 (학습에서 제외됨) -> {eval_set_path}")
+
+
+def cmd_auto(args):
+    all_paragraphs = collect_paragraphs()
+
+    rng = random.Random(args.seed)
+    by_book: dict[str, list[dict]] = {}
+    for p in all_paragraphs:
+        by_book.setdefault(p["book"], []).append(p)
+
+    # spread the eval sample evenly across books so no single book dominates it
+    eval_ids: set[str] = set()
+    n_books = len(by_book)
+    per_book = max(1, args.eval_n // n_books)
+    for book_paragraphs in by_book.values():
+        sample = rng.sample(book_paragraphs, min(per_book, len(book_paragraphs)))
+        eval_ids.update(p["id"] for p in sample)
+
+    write_train_and_eval(all_paragraphs, eval_ids)
+    print("(평가 문단은 무작위로 골랐습니다 — 직접 고르고 싶으면 candidates/build를 대신 쓰세요.)")
+
+
+def cmd_candidates(args):
+    all_paragraphs = collect_paragraphs()
+
     # sample candidates per (book, tag) so the user has a manageable list to read
     by_key: dict[tuple[str, str], list[dict]] = {}
     for p in all_paragraphs:
@@ -112,7 +157,6 @@ def cmd_candidates(args):
         for c in candidates:
             f.write(json.dumps(c, ensure_ascii=False) + "\n")
 
-    print(f"\n총 {len(all_paragraphs)}개 문단 -> {para_path}")
     print(f"후보 {len(candidates)}개 (book x tag별 상위 {args.per_group}개) -> {cand_path}")
     print("이 중 ~30개를 골라 id만 한 줄씩 eval_selected.txt 에 저장하세요.")
 
@@ -131,37 +175,24 @@ def cmd_build(args):
     if not eval_ids:
         raise SystemExit(f"{eval_ids_path} 에서 평가용 id를 읽지 못했습니다.")
 
-    train_lines = []
-    eval_paragraphs = []
-    with para_path.open(encoding="utf-8") as f:
-        for line in f:
-            p = json.loads(line)
-            if p["id"] in eval_ids:
-                eval_paragraphs.append(p)
-            else:
-                train_lines.append(p["text"])
-
-    train_corpus_path = OUT_DIR / "train_corpus.txt"
-    train_corpus_path.write_text("\n\n".join(train_lines), encoding="utf-8")
-
-    eval_set_path = OUT_DIR / "eval_set.jsonl"
-    with eval_set_path.open("w", encoding="utf-8") as f:
-        for p in eval_paragraphs:
-            f.write(json.dumps(p, ensure_ascii=False) + "\n")
-
-    missing = eval_ids - {p["id"] for p in eval_paragraphs}
+    all_paragraphs = [json.loads(line) for line in para_path.open(encoding="utf-8")]
+    missing = eval_ids - {p["id"] for p in all_paragraphs}
     if missing:
         print(f"경고: paragraphs.jsonl에서 못 찾은 id {len(missing)}개: {sorted(missing)[:5]} ...")
 
-    print(f"학습 코퍼스: {len(train_lines)}개 문단 -> {train_corpus_path}")
-    print(f"평가 세트: {len(eval_paragraphs)}개 문단 (학습에서 제외됨) -> {eval_set_path}")
+    write_train_and_eval(all_paragraphs, eval_ids)
 
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     sub = parser.add_subparsers(dest="command", required=True)
 
-    p_cand = sub.add_parser("candidates", help="챕터/문단 분리 + 평가 후보 추출")
+    p_auto = sub.add_parser("auto", help="원클릭: 분리 + 무작위 평가셋 + 학습 코퍼스까지 한 번에")
+    p_auto.add_argument("--eval-n", type=int, default=20, help="평가용으로 뗄 문단 총 개수")
+    p_auto.add_argument("--seed", type=int, default=42)
+    p_auto.set_defaults(func=cmd_auto)
+
+    p_cand = sub.add_parser("candidates", help="챕터/문단 분리 + 평가 후보 추출 (수동 선별용)")
     p_cand.add_argument("--per-group", type=int, default=15)
     p_cand.set_defaults(func=cmd_candidates)
 
