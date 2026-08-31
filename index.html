@@ -540,6 +540,17 @@ body.focus-mode .pomodoro-bar{display:flex;}
             <button class="btn btn-secondary" onclick="document.getElementById('import-file').click()">⬆ 불러오기</button>
             <input type="file" id="import-file" accept=".json" style="display:none" onchange="handleImport(event)">
           </div>
+          <div style="font-size:11px;color:var(--text3);margin-top:6px;">전체 데이터를 덮어써요. 백업 파일 복원용.</div>
+        </div>
+
+        <!-- 프로젝트 가져오기 -->
+        <div class="settings-section">
+          <div class="settings-section-title">📥 설정집 프로젝트 가져오기</div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;">
+            <button class="btn btn-secondary" onclick="document.getElementById('import-project-file').click()">⬆ 새 프로젝트로 가져오기</button>
+            <input type="file" id="import-project-file" accept=".json" style="display:none" onchange="importProjectJson(event)">
+          </div>
+          <div style="font-size:11px;color:var(--text3);margin-top:6px;">시놉시스·캐릭터카드·플롯 등이 담긴 프로젝트 JSON을 새 작품으로 추가해요. 기존 작품·데이터는 건드리지 않아요.</div>
         </div>
       </div>
     </div>
@@ -3184,6 +3195,39 @@ function handleImport(e){
       else showToast('올바른 백업 파일이 아닙니다');
     }catch(err){showToast('파일 파싱 오류: '+err.message);}
   };reader.readAsText(file);
+}
+
+// 단일 프로젝트(설정집) JSON을 기존 데이터를 건드리지 않고 새 작품으로 추가
+function importProjectJson(e){
+  const file=e.target.files?.[0];if(!file)return;
+  const reader=new FileReader();
+  reader.onload=evt=>{
+    try{
+      const data=JSON.parse(evt.target.result);
+      const p=data.project||data;
+      if(!p||!p.name){showToast('올바른 프로젝트 파일이 아니에요');return;}
+      const proj={
+        id:genId('proj'),name:p.name,genre:p.genre||'',desc:p.desc||'',theme:p.theme||'',
+        synopsis:p.synopsis||'',styleGuide:p.styleGuide||'',
+        createdAt:new Date().toLocaleDateString('ko-KR'),
+        characters:(p.characters||[]).map(c=>({...c,id:genId('char')})),
+        backgrounds:(p.backgrounds||[]).map(b=>({...b,id:genId('bg')})),
+        chapters:(p.chapters||[]).map((c,i)=>({
+          id:genId('ch'),title:c.title||`${i+1}화`,summary:c.summary||'',content:c.content||'',
+          done:!!c.done,createdAt:new Date().toLocaleDateString('ko-KR'),updatedAt:new Date().toLocaleDateString('ko-KR'),
+          chapterNum:i+1,aiSummary:c.aiSummary||'',eventLog:c.eventLog||'',relatedChars:c.relatedChars||[],history:[],
+        })),
+        etcItems:(p.etcItems||[]).map(it=>({...it,id:genId('etc')})),
+        plotMap:(p.plotMap||[]).map(pm=>({...pm,id:genId('plot')})),
+        timeline:[],foreshadowingItems:[],characterRelations:[],characterStates:{},
+        chatHistory:[],savedChats:[],submissions:[],writingGoal:4000,
+      };
+      state.projects.push(proj);
+      saveState();renderHomeProjects();openProject(proj.id);
+      showToast(`프로젝트 "${proj.name}" 가져오기 완료!`);
+    }catch(err){showToast('파일 파싱 오류: '+err.message);}
+  };reader.readAsText(file);
+  e.target.value='';
 }
 
 // ════════════════════════════════════════
