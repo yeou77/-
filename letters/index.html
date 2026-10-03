@@ -183,6 +183,10 @@ label.ghost{display:block;text-align:center;cursor:pointer}
 .sheet{width:100%;max-width:480px;background:#fff;border-radius:18px 18px 0 0;padding:10px 0 calc(14px + var(--safe-b));color:var(--ink)}
 .sheet button{display:block;width:100%;text-align:left;padding:15px 24px;font-size:16px}
 .sheet button:active{background:#f3f2ee}
+.modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.35);z-index:45;display:none;align-items:flex-end;justify-content:center}
+.modal{width:100%;max-width:480px;max-height:92vh;background:var(--paper);border-radius:18px 18px 0 0;padding:18px 16px calc(14px + var(--safe-b));display:flex;flex-direction:column;gap:10px}
+.modal h3{font-size:16px}
+.modal textarea{flex:1;min-height:45vh;width:100%;border:1px solid #dedcd6;border-radius:10px;padding:10px 12px;background:#fff;font-size:14px;line-height:1.6;outline:none;resize:none}
 </style>
 </head>
 <body>
@@ -266,6 +270,18 @@ label.ghost{display:block;text-align:center;cursor:pointer}
 <div id="viewer" onclick="this.style.display='none'"><img id="viewerImg" alt=""></div>
 <div id="toast"></div>
 <div class="sheet-bg" id="sheetBg" onclick="if(event.target===this)closeSheet()"><div class="sheet" id="sheet"></div></div>
+<!-- 기억 노트 넣기: 붙여넣거나 txt를 불러오면 여기서 먼저 확인·수정한 뒤 저장 -->
+<div class="modal-bg" id="memModal">
+  <div class="modal">
+    <h3>기억 노트 넣기</h3>
+    <div class="hint">아래 형식으로 붙여넣거나 txt 파일을 불러오세요. 저장 전에 여기서 내용을 확인하고 고칠 수 있어요.<br>[2025.07.28 ~ 2025.08.06] 줄 아래에 '- '로 시작하는 문장들</div>
+    <label class="ghost" for="fileMems">txt 파일 불러오기</label>
+    <input type="file" id="fileMems" class="vh" onchange="onMemFile(this)">
+    <textarea id="memImportText" placeholder="[2025.07.28 ~ 2025.08.06]&#10;- 이 시기에 있었던 일&#10;- ...&#10;&#10;[2025.08.07 ~ 2025.08.19]&#10;- ..."></textarea>
+    <div class="prog" id="memImportStatus"></div>
+    <div class="row"><button class="ghost" onclick="closeMemImport()">취소</button><button class="primary" onclick="saveMemImport()">저장</button></div>
+  </div>
+</div>
 <!-- txt·json은 accept를 걸지 않는다: 일부 안드로이드 파일 선택기가 형식을 잘못 판단해 파일을 회색으로 막아버린다. -->
 <input type="file" id="fileLetters" class="vh" onchange="onImportLetters(this)">
 <input type="file" id="fileBackup" class="vh" onchange="onImportBackup(this)">
@@ -1081,10 +1097,47 @@ function renderUs(){
     <div class="row" style="align-items:center"><div><span class="chip">D+${dPlus()}</span><div style="color:var(--ink2);font-size:14px;margin-top:8px">${esc(josa(c,'과/와'))} ${esc(u)}는</div><div style="font-size:28px;font-weight:700">${fmtDate(startTs())}부터</div></div>
     <div style="flex:0 0 auto;display:flex">${avatarHTML(S.charAvatar,c,72)}<span style="margin-left:-14px">${avatarHTML(S.userAvatar,u,72)}</span></div></div>
     <div class="stats"><div class="stat"><b>${letters.filter(l=>l.from==='char').length}</b><span>받은 편지</span></div><div class="stat"><b>${letters.filter(l=>l.from==='user').length}</b><span>보낸 편지</span></div><div class="stat"><b>${C.length}</b><span>메시지</span></div></div></div>
-    <div class="sec"><span>${esc(josa(nick(c),'가/가'))} 기억하는 우리</span><button class="ghost" style="font-size:13px;padding:6px 12px" onclick="runMemory(true)">기억 정리하기</button></div>
+    <div class="sec"><span>${esc(josa(nick(c),'가/가'))} 기억하는 우리</span><span style="display:flex;gap:6px"><button class="ghost" style="font-size:13px;padding:6px 12px" onclick="openMemImport()">기억 노트 넣기</button><button class="ghost" style="font-size:13px;padding:6px 12px" onclick="runMemory(true)">기억 정리하기</button></span></div>
     <div class="prog" id="memStatus" style="padding:0 20px">${unsummarized().length?`아직 정리 안 된 기록 ${unsummarized().length}개`:''}</div>
     ${mems||`<div class="empty" style="padding:30px">아직 기억 노트가 없어요.<br>편지를 불러온 뒤 <b>기억 정리하기</b>를 눌러 주세요.</div>`}
     <div style="height:120px"></div>`;
+}
+/* 기억 노트 직접 넣기 — 형식: [YYYY.MM.DD ~ YYYY.MM.DD] 머리줄 + 내용. 머리줄마다 노트 하나. */
+function parseMemTxt(text){
+  const out=[];let cur=null;
+  const toTs=(y,m,d,end)=>new Date(+y,+m-1,+d,end?23:0,end?59:0,end?59:0).getTime();
+  for(const raw of text.replace(/\r\n?/g,'\n').split('\n')){
+    const m=raw.trim().match(/^\[?\s*(\d{4})[.\-\/]\s*(\d{1,2})[.\-\/]\s*(\d{1,2})\.?\s*(?:[~\-–]\s*(\d{4})[.\-\/]\s*(\d{1,2})[.\-\/]\s*(\d{1,2})\.?)?\s*\]?$/);
+    if(m){
+      if(cur&&cur.lines.some(l=>l.trim()))out.push(cur);
+      cur={fromTs:toTs(m[1],m[2],m[3]),toTs:m[4]?toTs(m[4],m[5],m[6],true):toTs(m[1],m[2],m[3],true),lines:[]};
+      continue;
+    }
+    if(cur)cur.lines.push(raw);
+  }
+  if(cur&&cur.lines.some(l=>l.trim()))out.push(cur);
+  return out.map(n=>({fromTs:n.fromTs,toTs:n.toTs,content:n.lines.join('\n').trim(),createdAt:Date.now(),manual:true}));
+}
+function openMemImport(){$('memImportStatus').textContent='';$('memModal').style.display='flex';}
+function closeMemImport(){$('memModal').style.display='none';}
+async function onMemFile(input){
+  const f=input.files[0];input.value='';if(!f)return;
+  try{$('memImportText').value=await f.text();$('memImportStatus').textContent=`${f.name}을(를) 불러왔어요. 확인하고 저장을 눌러 주세요.`;}
+  catch(e){$('memImportStatus').textContent='파일을 읽지 못했어요: '+(e.message||e);}
+}
+async function saveMemImport(){
+  const notes=parseMemTxt($('memImportText').value);
+  if(!notes.length){$('memImportStatus').textContent='기억 노트를 찾지 못했어요. [2025.07.28 ~ 2025.08.06] 같은 날짜 줄이 있는지 확인해 주세요.';return;}
+  let replace=false;
+  if(M.length)replace=confirm(`기억 노트 ${notes.length}개를 넣을게요.\n지금 있는 기억 노트 ${M.length}개를 지우고 바꿀까요?\n(확인 = 바꾸기 / 취소 = 기존 노트에 추가)`);
+  if(replace){for(const m of M)await dbDel('mems',m.id);M=[];}
+  for(const n of notes){await dbPut('mems',n);M.push(n);}
+  sortAll();
+  // 넣은 노트가 다루는 기간까지는 이미 정리된 걸로 보고, 그 뒤 기록만 자동 정리하게 한다.
+  const last=Math.max(...notes.map(n=>n.toTs));
+  if(last>(S.memUpTo||0)){S.memUpTo=last;await saveS();}
+  $('memImportText').value='';closeMemImport();renderUs();
+  toast(`기억 노트 ${notes.length}개를 넣었어요`);
 }
 function editMem(id){
   const m=M.find(x=>x.id===id);if(!m)return;
