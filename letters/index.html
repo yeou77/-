@@ -41,6 +41,10 @@ input,textarea,select{font:inherit;color:inherit}
 .dark{background:var(--night);color:var(--night-ink)}
 .scroll{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain}
 .hide{display:none!important}
+/* 파일 선택 input은 display:none이면 일부 인앱 브라우저(네이버 앱 등)에서 눌러도 안 열린다.
+   화면에서만 감추고 label로 연결해서 브라우저 기본 동작으로 열리게 한다. */
+.vh{position:absolute;width:1px;height:1px;opacity:0;overflow:hidden;pointer-events:none;left:0;top:0}
+label.ghost{display:block;text-align:center;cursor:pointer}
 
 /* ── 상단 헤더 ── */
 .hdr{flex-shrink:0;display:flex;align-items:center;justify-content:space-between;padding:calc(18px + var(--safe-t)) 20px 14px;min-height:76px;position:relative}
@@ -162,8 +166,8 @@ input,textarea,select{font:inherit;color:inherit}
 .cin{flex-shrink:0;display:flex;align-items:flex-end;gap:8px;padding:10px 12px calc(10px + var(--safe-b));background:#232329}
 .cin textarea{flex:1;background:transparent;border:none;outline:none;resize:none;color:var(--night-ink);font-size:16px;line-height:1.5;max-height:120px;padding:8px 6px}
 .cin textarea::placeholder{color:#6c6c76}
-.cin button{width:42px;height:42px;display:flex;align-items:center;justify-content:center;color:#cfcfd6;flex-shrink:0}
-.cin button svg{width:28px;height:28px}
+.cin button,.cin label{width:42px;height:42px;display:flex;align-items:center;justify-content:center;color:#cfcfd6;flex-shrink:0}
+.cin button svg,.cin label svg{width:28px;height:28px}
 .cin .send{background:var(--planet1);border-radius:50%;color:#fff}
 .cin .send svg{width:20px;height:20px}
 .pendimg{display:flex;gap:6px;padding:6px 12px 0;background:#232329}
@@ -245,9 +249,9 @@ input,textarea,select{font:inherit;color:inherit}
   <div class="pendimg hide" id="pendImg"></div>
   <div class="cin">
     <textarea id="chatInput" rows="1" placeholder="메시지를 입력하세요" oninput="onChatInput()" onkeydown="onChatKey(event)"></textarea>
-    <button id="chatImgBtn" onclick="document.getElementById('chatImgFile').click()" aria-label="사진"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="3" y="3" width="18" height="18" rx="3"/><circle cx="9" cy="9" r="2"/><path d="m21 15-5-5L5 21"/></svg></button>
+    <label id="chatImgBtn" for="chatImgFile" aria-label="사진"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="3" y="3" width="18" height="18" rx="3"/><circle cx="9" cy="9" r="2"/><path d="m21 15-5-5L5 21"/></svg></label>
     <button id="chatSendBtn" class="send hide" onclick="sendChat()" aria-label="보내기"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M3 20.5 21 12 3 3.5 3 10l12 2-12 2z"/></svg></button>
-    <input type="file" id="chatImgFile" accept="image/*" class="hide" onchange="onChatImg(this)">
+    <input type="file" id="chatImgFile" accept="image/*" class="vh" onchange="onChatImg(this)">
   </div>
 </section>
 
@@ -262,10 +266,12 @@ input,textarea,select{font:inherit;color:inherit}
 <div id="viewer" onclick="this.style.display='none'"><img id="viewerImg" alt=""></div>
 <div id="toast"></div>
 <div class="sheet-bg" id="sheetBg" onclick="if(event.target===this)closeSheet()"><div class="sheet" id="sheet"></div></div>
-<input type="file" id="fileLetters" accept=".txt,text/plain" class="hide" onchange="onImportLetters(this)">
-<input type="file" id="fileBackup" accept=".json,application/json" class="hide" onchange="onImportBackup(this)">
-<input type="file" id="filePhotos" accept="image/*" multiple class="hide" onchange="onAddPhotos(this)">
-<input type="file" id="fileAvatar" accept="image/*" class="hide" onchange="onAvatar(this)">
+<!-- txt·json은 accept를 걸지 않는다: 일부 안드로이드 파일 선택기가 형식을 잘못 판단해 파일을 회색으로 막아버린다. -->
+<input type="file" id="fileLetters" class="vh" onchange="onImportLetters(this)">
+<input type="file" id="fileBackup" class="vh" onchange="onImportBackup(this)">
+<input type="file" id="filePhotos" accept="image/*" multiple class="vh" onchange="onAddPhotos(this)">
+<input type="file" id="fileAvatarUser" accept="image/*" class="vh" onchange="onAvatar(this,'userAvatar')">
+<input type="file" id="fileAvatarChar" accept="image/*" class="vh" onchange="onAvatar(this,'charAvatar')">
 
 <script>
 /* ══════════════════════ 설정 / 상태 ══════════════════════ */
@@ -468,6 +474,8 @@ ${S.charSheet||DEFAULT_SHEET}`;
   const mt=memText();
   if(mt)s+=`\n\n[지금까지 둘이 함께한 기억 — 사실관계는 여기서 벗어나지 말 것]\n${mt}`;
   const recentLetters=L.filter(l=>l.body&&l.status!=='pending'&&l.id!==excludeId).slice(mode==='letter'?-4:-2);
+  const ex=styleSamples(mode==='letter'?4:3,new Set(recentLetters.map(l=>l.id)));
+  if(ex.length)s+=`\n\n[${c}의 실제 문체 — 설정보다 이걸 우선한다. 호칭, 어미, 문장 길이, 감정 표현의 세기, 끝맺음을 그대로 따라 한다. 내용과 문장은 베끼지 않는다]\n`+ex.map(l=>`(${fmtDate(l.ts)})\n${l.body.length>1200?l.body.slice(0,1200)+'…':l.body}`).join('\n\n---\n\n');
   if(recentLetters.length)s+=`\n\n[최근에 주고받은 편지]\n`+recentLetters.map(letterLine).join('\n\n');
   if(mode==='letter'){
     const rc=C.slice(-30);
@@ -477,7 +485,8 @@ ${S.charSheet||DEFAULT_SHEET}`;
   s+=`\n\n[공통 규칙]
 - AI, 언어모델, 시스템, 프롬프트 같은 말은 절대 하지 않는다. ${josa(c,'은/는')} 실제로 살아 있는 사람이다.
 - 기억에 없는 큰 사건을 새로 지어내지 않는다. 모르는 건 자연스럽게 묻는다.
-- ${josa(u,'을/를')} 부르는 호칭과 말버릇은 설정과 최근 편지·메시지에서 쓰던 그대로 유지한다.`;
+- ${josa(u,'을/를')} 부르는 호칭과 말버릇은 실제 문체 예시와 최근 편지·메시지에서 쓰던 그대로 유지한다.
+- 무난하고 점잖은 "일반적인 다정한 사람" 말투로 흐르지 않는다. ${c}만의 말투와 감정의 온도를 지킨다.`;
   if(mode==='letter'){
     s+=`\n\n[편지 작성 규칙]
 - 편지 본문만 쓴다. 날짜, From/To 머리말, 따옴표, 설명은 붙이지 않는다.
@@ -488,12 +497,23 @@ ${S.charSheet||DEFAULT_SHEET}`;
     s+=`\n\n[메신저 규칙]
 - 카카오톡처럼 짧은 메시지 1~4개로 답한다. 메시지마다 줄을 바꿔 구분하고, 한 메시지는 1~2문장.
 - 행동 묘사(*...*), 괄호 지문, 따옴표, 이름표("${c}:")는 쓰지 않는다. 실제로 폰으로 보내는 말만.
+- 호칭, 말버릇, 감정 표현은 실제 편지 문체 그대로 쓰되 메신저답게 짧게 줄인다.
 - 이모지는 가끔, 자연스러울 때만.`;
     if(P.length){
       s+=`\n- 지금 상황에 어울리면 가끔 셀카나 사진을 보낼 수 있다. 보낼 때는 따로 한 줄에 [사진: 상황 키워드] 형식으로만 적는다. (예: [사진: 차 안 셀카]) 보낼 수 있는 사진 종류: ${[...new Set(P.map(p=>p.tags).filter(Boolean))].slice(0,40).join(', ')||'일상 사진'}`;
     }
   }
   return s;
+}
+// 프롬프트에 넣을 실제 편지 예시: 최근 2통 + 그 이전 60통 중 길이가 넉넉한 것에서 랜덤.
+// 최근 편지 목록에 이미 들어간 건 빼서 같은 편지가 두 번 들어가지 않게 한다.
+function styleSamples(n,skip){
+  const cl=L.filter(l=>l.from==='char'&&l.body&&l.status!=='pending'&&!skip.has(l.id));
+  if(!cl.length)return[];
+  const out=cl.slice(-2);
+  const pool=cl.slice(-62,-2).filter(l=>l.body.length>=200);
+  while(out.length<n&&pool.length)out.unshift(pool.splice(Math.floor(Math.random()*pool.length),1)[0]);
+  return out;
 }
 function cleanLetter(t){
   t=(t||'').replace(/```[a-z]*\n?|```/g,'').trim();
@@ -716,9 +736,11 @@ function parseLettersTxt(text){
 async function onImportLetters(input){
   const f=input.files[0];input.value='';if(!f)return;
   if(!S.charName){toast('먼저 상대 이름을 적고 설정 저장을 눌러 주세요. 누가 쓴 편지인지 이름으로 구분해요.',4000);return;}
-  const text=await f.text();
+  setStatus('impStatus',`${f.name} 읽는 중…`);
+  let text;
+  try{text=await f.text();}catch(e){setStatus('impStatus','파일을 읽지 못했어요: '+(e.message||e));return;}
   const parsed=parseLettersTxt(text);
-  if(!parsed.length){toast('편지를 찾지 못했어요. 형식을 확인해 주세요.');return;}
+  if(!parsed.length){setStatus('impStatus',`편지를 찾지 못했어요. (${f.name}, ${text.length}자) 날짜 / From. 이름 / To. 이름 / 본문, 편지 사이 --- 형식인지 확인해 주세요.`);return;}
   const key=l=>fmtDate(l.ts)+'|'+l.from+'|'+l.body.slice(0,40);
   const have=new Set(L.map(key));
   const fresh=parsed.filter(l=>!have.has(key(l)));
@@ -1029,8 +1051,8 @@ function renderSettings(){
   $('setBody').innerHTML=`${welcome}
   <div class="card"><h3>프로필</h3>
     <div class="avrow">
-      <div class="avpick" onclick="pickAvatar('userAvatar')">${avatarHTML(S.userAvatar,uName(),72)}<span>내 사진</span></div>
-      <div class="avpick" onclick="pickAvatar('charAvatar')">${avatarHTML(S.charAvatar,cName(),72)}<span>${esc(cName())} 사진</span></div>
+      <label class="avpick" for="fileAvatarUser">${avatarHTML(S.userAvatar,uName(),72)}<span>내 사진</span></label>
+      <label class="avpick" for="fileAvatarChar">${avatarHTML(S.charAvatar,cName(),72)}<span>${esc(cName())} 사진</span></label>
     </div>
     <div class="row"><div class="field"><label>내 이름</label><input type="text" id="s-userName" value="${esc(S.userName)}" placeholder="편지에서 불리는 이름"></div>
     <div class="field"><label>상대 이름 (짧게)</label><input type="text" id="s-charName" value="${esc(S.charName)}" placeholder="편지에 적힌 이름"></div></div>
@@ -1060,14 +1082,14 @@ function renderSettings(){
   </div>
   <div class="card"><h3>사진 보관함 (${P.length})</h3>
     <div class="hint">${esc(josa(nick(cName()),'가/가'))} 메신저에서 보낼 사진들이에요. 사진마다 상황을 짧게 적어두면 (예: 차 안 셀카, 잠옷, 카페) 대화에 맞는 사진을 골라 보내요.</div>
-    <button class="ghost" style="width:100%;margin-top:10px" onclick="$('filePhotos').click()">사진 추가</button>
+    <label class="ghost" style="margin-top:10px" for="filePhotos">사진 추가</label>
     <div class="phgrid">${P.map(ph=>`<div class="ph"><img src="${ph.data}" alt="">${ph.sentAt?'<span class="sent">받음</span>':''}<button class="x" onclick="delPhoto(${ph.id})">×</button><input type="text" value="${esc(ph.tags||'')}" placeholder="상황 설명" onchange="setPhotoTag(${ph.id},this.value)"></div>`).join('')}</div>
   </div>
   <div class="card"><h3>데이터</h3>
-    <button class="ghost" style="width:100%;margin-bottom:8px" onclick="$('fileLetters').click()">편지 txt 불러오기</button>
+    <label class="ghost" style="margin-bottom:8px" for="fileLetters">편지 txt 불러오기</label>
     <div class="hint">날짜 / From. 이름 / To. 이름 / 본문 순서로 적고 편지 사이를 --- 로 나눈 파일이에요. 불러온 편지는 이 기기 브라우저에만 저장돼요.</div>
     <div class="prog" id="impStatus"></div>
-    <div class="row" style="margin-top:10px"><button class="ghost" onclick="exportBackup()">백업 저장</button><button class="ghost" onclick="$('fileBackup').click()">백업 불러오기</button></div>
+    <div class="row" style="margin-top:10px"><button class="ghost" onclick="exportBackup()">백업 저장</button><label class="ghost" for="fileBackup">백업 불러오기</label></div>
     <div class="hint">백업 파일에는 API 키가 들어가지 않아요. 폰을 바꾸거나 브라우저 데이터를 지우기 전에 꼭 백업하세요.</div>
     <button class="ghost" style="width:100%;margin-top:10px" onclick="askNotify()">알림 허용</button>
     <button class="ghost danger" style="width:100%;margin-top:10px" onclick="wipeAll()">모든 데이터 삭제</button>
@@ -1111,12 +1133,10 @@ async function testAI(){
     setStatus('aiStatus','✓ '+(out.trim().slice(0,40)||'응답 받음'));
   }catch(e){setStatus('aiStatus','✗ '+(e.message||e));}
 }
-let _avatarTarget=null;
-function pickAvatar(k){_avatarTarget=k;$('fileAvatar').click();}
-async function onAvatar(input){
-  const f=input.files[0];input.value='';if(!f||!_avatarTarget)return;
+async function onAvatar(input,key){
+  const f=input.files[0];input.value='';if(!f)return;
   readSettingsForm();
-  S[_avatarTarget]=await resizeImg(f,320,0.85);await saveS();renderAll();
+  S[key]=await resizeImg(f,320,0.85);await saveS();renderAll();
 }
 async function onAddPhotos(input){
   const files=[...input.files];input.value='';
@@ -1145,8 +1165,14 @@ async function askNotify(){
 async function exportBackup(){
   const s=Object.assign({},S,{keys:{}});
   const data={app:'letters',version:1,exportedAt:Date.now(),S:s,letters:L,chats:C,photos:P,mems:M};
+  const name=`letters-backup-${fmtDate(Date.now()).replace(/\./g,'')}.json`;
   const blob=new Blob([JSON.stringify(data)],{type:'application/json'});
-  const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=`letters-backup-${fmtDate(Date.now()).replace(/\./g,'')}.json`;
+  // 인앱 브라우저는 다운로드를 막는 경우가 많아서, 되면 공유 시트(드라이브·카톡 등에 저장)로 보낸다.
+  try{
+    const file=new File([blob],name,{type:'application/json'});
+    if(navigator.canShare&&navigator.canShare({files:[file]})){await navigator.share({files:[file],title:name});return;}
+  }catch(e){if(e.name==='AbortError')return;}
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=name;
   document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),5000);
 }
 async function onImportBackup(input){
