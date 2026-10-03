@@ -405,7 +405,10 @@ function setTab(t){
 async function fetchRetry(url,opts,tries){
   tries=tries===undefined?2:tries;
   for(let i=0;;i++){
-    const r=await fetch(url,opts);
+    let r;
+    // "Failed to fetch"(TypeError)는 폰이 잠깐 네트워크를 끊었을 때 주로 난다. 한 번 쉬었다가 다시 보낸다.
+    try{r=await fetch(url,opts);}
+    catch(e){if(e.name!=='TypeError'||i>=tries)throw new Error('연결이 끊겼어요. 화면을 켜 둔 채로 다시 시도해 주세요.');await sleep(2000*(i+1));continue;}
     if((r.status!==429&&r.status!==529&&r.status!==503)||i>=tries)return r;
     await sleep(1500*Math.pow(2,i));
   }
@@ -700,8 +703,9 @@ function notify(title,body){
 
 /* ══════════════════════ 편지 txt 불러오기 ══════════════════════ */
 // 형식: 날짜 줄 / From. 이름 / To. 이름 / 본문, 편지 사이는 --- 로 구분 (최신순이든 과거순이든 상관없음)
+// 손으로 정리한 파일은 --- 대신 -- 로 나뉜 곳도 있어서 대시 두 개 이상만 있는 줄을 모두 구분선으로 본다.
 function parseLettersTxt(text){
-  const parts=text.replace(/\r\n?/g,'\n').split(/\n\s*-{3,}\s*\n/).map(s=>s.trim()).filter(Boolean);
+  const parts=text.replace(/\r\n?/g,'\n').split(/\n[ \t]*-{2,}[ \t]*\n/).map(s=>s.trim()).filter(Boolean);
   const out=[];
   const cn=cName(),un=S.userName;
   for(const p of parts){
@@ -742,15 +746,21 @@ async function onImportLetters(input){
   const parsed=parseLettersTxt(text);
   if(!parsed.length){setStatus('impStatus',`편지를 찾지 못했어요. (${f.name}, ${text.length}자) 날짜 / From. 이름 / To. 이름 / 본문, 편지 사이 --- 형식인지 확인해 주세요.`);return;}
   const key=l=>fmtDate(l.ts)+'|'+l.from+'|'+l.body.slice(0,40);
-  const have=new Set(L.map(key));
-  const fresh=parsed.filter(l=>!have.has(key(l)));
+  const have=new Map(L.map(l=>[key(l),l]));
+  const fresh=[];let fixed=0;
+  for(const l of parsed){
+    const old=have.get(key(l));
+    if(!old){fresh.push(l);continue;}
+    // 예전 버전에서 여러 통이 한 통으로 합쳐져 들어간 편지는 본문을 새로 나눈 것으로 바꾼다.
+    if(old.imported&&old.body!==l.body){old.body=l.body;await dbPut('letters',old);fixed++;}
+  }
   for(const l of fresh){await dbPut('letters',l);L.push(l);}
   sortAll();
   const nc=fresh.filter(l=>l.from==='char').length;
   if(!S.startDate&&L.length){S.startDate=new Date(L[0].ts).toISOString().slice(0,10);await saveS();}
   renderAll();
   toast(`편지 ${fresh.length}통을 불러왔어요 (${cName()} ${nc}통)`,4000);
-  setStatus('impStatus',`${fresh.length}통 추가됨${parsed.length-fresh.length?` · 중복 ${parsed.length-fresh.length}통 건너뜀`:''}\n다음 순서: ① 기억 정리하기 → ② 편지로 설정 만들기`);
+  setStatus('impStatus',`${fresh.length}통 추가됨${fixed?` · ${fixed}통 바로잡음`:''}${parsed.length-fresh.length-fixed?` · 중복 ${parsed.length-fresh.length-fixed}통 건너뜀`:''}\n다음 순서: ① 기억 정리하기 → ② 편지로 설정 만들기`);
 }
 
 /* ══════════════════════ 기억(요약) ══════════════════════ */
@@ -798,9 +808,17 @@ async function rollupIfLong(){
     M=[merged,...M.slice(4)];sortAll();
   }
 }
+// 기억 정리나 설정 만들기처럼 오래 걸리는 동안 화면이 꺼지면 브라우저가 요청을 끊어버린다.
+let _wake=null;
+async function keepAwake(on){
+  try{
+    if(on&&!_wake&&navigator.wakeLock){_wake=await navigator.wakeLock.request('screen');_wake.addEventListener('release',()=>{_wake=null;});}
+    if(!on&&_wake){await _wake.release();_wake=null;}
+  }catch(e){}
+}
 async function runMemory(all){
   if(memBusy){toast('이미 기억을 정리하는 중이에요');return;}
-  memBusy=true;
+  memBusy=true;if(all)keepAwake(true);
   try{
     let items=unsummarized();
     const total=items.length;
@@ -809,7 +827,7 @@ async function runMemory(all){
     while(items.length){
       if(!all&&items.length<20)break; // 자동 정리는 기록이 충분히 쌓였을 때만
       const chunk=nextChunk(items);
-      setStatus('memStatus',`기억 정리 중… ${done}/${total}`);
+      setStatus('memStatus',`기억 정리 중… ${done}/${total} (화면을 켜 둔 채로 기다려 주세요)`);
       const content=await summarizeChunk(chunk);
       if(!content)throw new Error('요약 결과가 비어 있어요');
       const m={fromTs:chunk[0].ts,toTs:chunk[chunk.length-1].ts,content,createdAt:Date.now()};
@@ -824,7 +842,7 @@ async function runMemory(all){
     setStatus('memStatus',`정리 완료 · 기억 노트 ${M.length}개`);
   }catch(e){
     setStatus('memStatus','중단됨: '+(e.message||e)+'\n다시 누르면 이어서 정리해요.');
-  }finally{memBusy=false;}
+  }finally{memBusy=false;if(all)keepAwake(false);}
 }
 function maybeAutoMemory(){if(unsummarized().length>=40)runMemory(false);}
 function setStatus(id,t){const el=$(id);if(el)el.textContent=t;}
@@ -832,7 +850,8 @@ function setStatus(id,t){const el=$(id);if(el)el.textContent=t;}
 async function genSheet(){
   const chars=L.filter(l=>l.from==='char'&&l.body&&l.status!=='pending');
   if(!chars.length){toast('먼저 편지를 불러와 주세요');return;}
-  setStatus('sheetStatus','편지를 읽고 설정을 만드는 중…');
+  setStatus('sheetStatus','편지를 읽고 설정을 만드는 중… 화면을 켜 둔 채로 기다려 주세요.');
+  keepAwake(true);
   try{
     // 처음부터 최근까지 고르게 18통을 뽑는다. 최근 편지일수록 지금 말투에 가까우니 뒤쪽을 조금 더 뽑는다.
     const pick=[];const n=chars.length;
@@ -859,6 +878,7 @@ ${sample.map(l=>`(${fmtDate(l.ts)})\n${l.body.slice(0,900)}`).join('\n\n---\n\n'
     renderSettings();
     setStatus('sheetStatus','설정을 만들었어요. 아래에서 직접 고칠 수도 있어요.');
   }catch(e){setStatus('sheetStatus','실패: '+(e.message||e));}
+  finally{keepAwake(false);}
 }
 
 /* ══════════════════════ 메신저 ══════════════════════ */
