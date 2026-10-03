@@ -109,7 +109,8 @@ label.ghost{display:block;text-align:center;cursor:pointer}
 
 /* ── 우리 ── */
 .ushead{background:#e6e5e0;padding:calc(18px + var(--safe-t)) 22px 22px}
-.ushead .ttl2{font-size:38px;text-align:center;line-height:1.1;margin-bottom:14px}
+.ushead .ttl2,.albhead .ttl2{font-size:38px;text-align:center;line-height:1.1;margin-bottom:14px}
+.albhead{padding:calc(18px + var(--safe-t)) 22px 4px}
 .chip{display:inline-block;background:#fff;border-radius:16px;padding:4px 14px;font-weight:700;color:#555;font-size:15px}
 .stats{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:16px}
 .stat{background:#fff;border-radius:14px;padding:12px 6px;text-align:center}
@@ -207,7 +208,7 @@ label.ghost{display:block;text-align:center;cursor:pointer}
   </div>
   <!-- 앨범 -->
   <div id="t-album" class="tab scroll hide">
-    <div class="hdr"><div class="side"></div><div class="ttl hand" id="albumTitle">기억</div><div class="side"></div></div>
+    <div class="albhead"><div class="ttl2 hand" id="albumTitle">기억</div></div>
     <div id="albumBody"></div>
   </div>
   <!-- 우리 -->
@@ -1087,9 +1088,8 @@ function renderAlbum(){
   // 위: 받은 사진(폴라로이드), 아래: 기억 노트
   const photos=sent.length
     ?`<div class="polas">${sent.map(p=>`<div class="pola" onclick="viewImg(this.querySelector('img').src)"><img src="${p.data}" alt=""><div class="cap">${esc(p.tags||fmtDate(p.sentAt))}</div></div>`).join('')}</div>`
-    :`<div class="hint" style="padding:0 22px 6px">받은 사진이 아직 없어요. 전체 탭의 <b>사진 보관함</b>에 사진을 넣어두면 메신저에서 ${esc(josa(nick(c),'가/가'))} 보내줘요.</div>`;
+    :'';
   $('albumBody').innerHTML=photos+`
-    <div class="sec"><span>${esc(josa(nick(c),'가/가'))} 기억하는 우리</span></div>
     <div class="row" style="padding:8px 16px 0"><button class="ghost" style="font-size:14px;white-space:nowrap" onclick="openMemImport()">기억 노트 넣기</button><button class="ghost" style="font-size:14px;white-space:nowrap" onclick="runMemory(true)">기억 정리하기</button></div>
     <div class="prog" id="memStatus" style="padding:0 20px">${unsummarized().length?`아직 정리 안 된 기록 ${unsummarized().length}개`:''}</div>
     ${mems||`<div class="empty" style="padding:30px">아직 기억 노트가 없어요.<br><b>기억 노트 넣기</b>로 정리한 노트를 넣거나,<br><b>기억 정리하기</b>로 AI에게 정리를 맡겨 주세요.</div>`}
