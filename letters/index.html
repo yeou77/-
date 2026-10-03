@@ -880,12 +880,12 @@ async function runMemory(all){
       await dbPut('mems',m);M.push(m);
       S.memUpTo=chunk[chunk.length-1].ts;await saveS();
       done+=chunk.length;items=items.slice(chunk.length);maxItems=30;
-      if(curTab==='us'&&all)renderUs();
+      if(curTab==='album'&&all)renderAlbum();
       if(!all)break;
     }
     setStatus('memStatus','기억을 합치는 중…');
     await rollupIfLong();
-    if(curTab==='us')renderUs();
+    if(curTab==='album')renderAlbum();
     setStatus('memStatus',`정리 완료 · 기억 노트 ${M.length}개`+(skipped?`\nAI가 요약을 거부한 기록 ${skipped}개는 건너뛰었어요 (원문 편지는 그대로 있어요)`:''));
   }catch(e){
     setStatus('memStatus','중단됨: '+(e.message||e)+'\n다시 누르면 이어서 정리해요.');
@@ -1081,25 +1081,28 @@ function viewImg(src){$('viewerImg').src=src;$('viewer').style.display='flex';}
 /* ══════════════════════ 앨범 / 우리 ══════════════════════ */
 function renderAlbum(){
   if(!S)return;
+  const c=cName();
   const sent=P.filter(p=>p.sentAt).sort((a,b)=>b.sentAt-a.sentAt);
-  if(!sent.length){
-    $('albumBody').innerHTML=`<div class="empty">아직 받은 사진이 없어요.<br>전체 탭의 <b>사진 보관함</b>에 ${esc(josa(nick(cName()),'의/의'))} 사진을 넣어두면,<br>메신저에서 대화하다가 ${esc(josa(nick(cName()),'가/가'))} 보내줘요.</div>`;
-    return;
-  }
-  $('albumBody').innerHTML=`<div class="polas">${sent.map(p=>`<div class="pola" onclick="viewImg(this.querySelector('img').src)"><img src="${p.data}" alt=""><div class="cap">${esc(p.tags||fmtDate(p.sentAt))}</div></div>`).join('')}</div>`;
+  const mems=M.slice().reverse().map(m=>`<div class="memcard" id="mem-${m.id}"><div class="md"><span>${fmtDate(m.fromTs)} ~ ${fmtDate(m.toTs)}</span><span><button onclick="editMem(${m.id})" style="color:var(--ink2);font-size:12.5px">수정</button> · <button onclick="delMem(${m.id})" class="danger" style="font-size:12.5px">삭제</button></span></div><div class="mt">${esc(m.content)}</div></div>`).join('');
+  // 위: 받은 사진(폴라로이드), 아래: 기억 노트
+  const photos=sent.length
+    ?`<div class="polas">${sent.map(p=>`<div class="pola" onclick="viewImg(this.querySelector('img').src)"><img src="${p.data}" alt=""><div class="cap">${esc(p.tags||fmtDate(p.sentAt))}</div></div>`).join('')}</div>`
+    :`<div class="hint" style="padding:0 22px 6px">받은 사진이 아직 없어요. 전체 탭의 <b>사진 보관함</b>에 사진을 넣어두면 메신저에서 ${esc(josa(nick(c),'가/가'))} 보내줘요.</div>`;
+  $('albumBody').innerHTML=photos+`
+    <div class="sec"><span>${esc(josa(nick(c),'가/가'))} 기억하는 우리</span></div>
+    <div class="row" style="padding:8px 16px 0"><button class="ghost" style="font-size:14px;white-space:nowrap" onclick="openMemImport()">기억 노트 넣기</button><button class="ghost" style="font-size:14px;white-space:nowrap" onclick="runMemory(true)">기억 정리하기</button></div>
+    <div class="prog" id="memStatus" style="padding:0 20px">${unsummarized().length?`아직 정리 안 된 기록 ${unsummarized().length}개`:''}</div>
+    ${mems||`<div class="empty" style="padding:30px">아직 기억 노트가 없어요.<br><b>기억 노트 넣기</b>로 정리한 노트를 넣거나,<br><b>기억 정리하기</b>로 AI에게 정리를 맡겨 주세요.</div>`}
+    <div style="height:120px"></div>`;
 }
 function renderUs(){
   if(!S)return;
   const c=cName(),u=uName();
   const letters=L.filter(l=>l.status!=='pending');
-  const mems=M.slice().reverse().map(m=>`<div class="memcard" id="mem-${m.id}"><div class="md"><span>${fmtDate(m.fromTs)} ~ ${fmtDate(m.toTs)}</span><span><button onclick="editMem(${m.id})" style="color:var(--ink2);font-size:12.5px">수정</button> · <button onclick="delMem(${m.id})" class="danger" style="font-size:12.5px">삭제</button></span></div><div class="mt">${esc(m.content)}</div></div>`).join('');
   $('usBody').innerHTML=`<div class="ushead"><div class="ttl2 hand">${esc(nick(c))}와의 사이</div>
     <div class="row" style="align-items:center"><div><span class="chip">D+${dPlus()}</span><div style="color:var(--ink2);font-size:14px;margin-top:8px">${esc(josa(c,'과/와'))} ${esc(u)}는</div><div style="font-size:28px;font-weight:700">${fmtDate(startTs())}부터</div></div>
     <div style="flex:0 0 auto;display:flex">${avatarHTML(S.charAvatar,c,72)}<span style="margin-left:-14px">${avatarHTML(S.userAvatar,u,72)}</span></div></div>
     <div class="stats"><div class="stat"><b>${letters.filter(l=>l.from==='char').length}</b><span>받은 편지</span></div><div class="stat"><b>${letters.filter(l=>l.from==='user').length}</b><span>보낸 편지</span></div><div class="stat"><b>${C.length}</b><span>메시지</span></div></div></div>
-    <div class="sec"><span>${esc(josa(nick(c),'가/가'))} 기억하는 우리</span><span style="display:flex;gap:6px"><button class="ghost" style="font-size:13px;padding:6px 12px" onclick="openMemImport()">기억 노트 넣기</button><button class="ghost" style="font-size:13px;padding:6px 12px" onclick="runMemory(true)">기억 정리하기</button></span></div>
-    <div class="prog" id="memStatus" style="padding:0 20px">${unsummarized().length?`아직 정리 안 된 기록 ${unsummarized().length}개`:''}</div>
-    ${mems||`<div class="empty" style="padding:30px">아직 기억 노트가 없어요.<br>편지를 불러온 뒤 <b>기억 정리하기</b>를 눌러 주세요.</div>`}
     <div style="height:120px"></div>`;
 }
 /* 기억 노트 직접 넣기 — 형식: [YYYY.MM.DD ~ YYYY.MM.DD] 머리줄 + 내용. 머리줄마다 노트 하나. */
@@ -1136,16 +1139,16 @@ async function saveMemImport(){
   // 넣은 노트가 다루는 기간까지는 이미 정리된 걸로 보고, 그 뒤 기록만 자동 정리하게 한다.
   const last=Math.max(...notes.map(n=>n.toTs));
   if(last>(S.memUpTo||0)){S.memUpTo=last;await saveS();}
-  $('memImportText').value='';closeMemImport();renderUs();
+  $('memImportText').value='';closeMemImport();renderAlbum();
   toast(`기억 노트 ${notes.length}개를 넣었어요`);
 }
 function editMem(id){
   const m=M.find(x=>x.id===id);if(!m)return;
   const el=$('mem-'+id);
-  el.querySelector('.mt').outerHTML=`<textarea id="memEdit-${id}">${esc(m.content)}</textarea><div class="row" style="margin-top:8px"><button class="ghost" onclick="renderUs()">취소</button><button class="primary" onclick="saveMem(${id})">저장</button></div>`;
+  el.querySelector('.mt').outerHTML=`<textarea id="memEdit-${id}">${esc(m.content)}</textarea><div class="row" style="margin-top:8px"><button class="ghost" onclick="renderAlbum()">취소</button><button class="primary" onclick="saveMem(${id})">저장</button></div>`;
 }
-async function saveMem(id){const m=M.find(x=>x.id===id);m.content=$('memEdit-'+id).value.trim();await dbPut('mems',m);renderUs();toast('저장했어요');}
-async function delMem(id){if(!confirm('이 기억 노트를 지울까요?'))return;await dbDel('mems',id);M=M.filter(x=>x.id!==id);renderUs();}
+async function saveMem(id){const m=M.find(x=>x.id===id);m.content=$('memEdit-'+id).value.trim();await dbPut('mems',m);renderAlbum();toast('저장했어요');}
+async function delMem(id){if(!confirm('이 기억 노트를 지울까요?'))return;await dbDel('mems',id);M=M.filter(x=>x.id!==id);renderAlbum();}
 
 /* ══════════════════════ 전체(설정) ══════════════════════ */
 function renderSettings(){
