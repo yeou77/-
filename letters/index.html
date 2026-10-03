@@ -1,0 +1,1183 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<title>편지함</title>
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<link rel="icon" href="icons/icon-192.png">
+<meta name="theme-color" content="#f6f5f2">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="편지함">
+<meta name="mobile-web-app-capable" content="yes">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Nanum+Pen+Script&family=Noto+Sans+KR:wght@300;400;500;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  /* 편지 앱 (밝은 종이) */
+  --paper:#f6f5f2;--paper-line:#ecebe6;--card:#ebeae6;--card2:#e3e1dc;
+  --ink:#3b3a37;--ink2:#7d7b76;--ink3:#aaa8a2;--btn:#5a5856;
+  /* 메신저 (어두운) */
+  --night:#16161a;--night2:#1e1e23;--bubble:#2b2b32;--bubble-me:#3a3a45;--night-ink:#ececf1;--night-ink2:#8d8d98;
+  --planet1:#6d5cf0;--planet2:#a48bff;
+  --red:#d9534f;--heart:#f4a5a5;
+  --nav-h:64px;
+  --safe-b:env(safe-area-inset-bottom,0px);--safe-t:env(safe-area-inset-top,0px);
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent;margin:0;padding:0}
+html,body{height:100%;background:#d8d6d1;overflow:hidden}
+body{font-family:'Noto Sans KR',-apple-system,sans-serif;color:var(--ink);font-size:15px;line-height:1.6}
+button{font:inherit;color:inherit;background:none;border:none;cursor:pointer}
+input,textarea,select{font:inherit;color:inherit}
+.hand{font-family:'Nanum Pen Script',cursive;font-weight:400}
+#app{position:relative;max-width:480px;height:100%;margin:0 auto;overflow:hidden;background:var(--paper)}
+.view{position:absolute;inset:0;display:none;flex-direction:column;overflow:hidden}
+.view.active{display:flex}
+.light{background:var(--paper);color:var(--ink);
+  background-image:repeating-linear-gradient(to bottom,transparent 0,transparent 59px,var(--paper-line) 59px,var(--paper-line) 60px)}
+.dark{background:var(--night);color:var(--night-ink)}
+.scroll{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain}
+.hide{display:none!important}
+
+/* ── 상단 헤더 ── */
+.hdr{flex-shrink:0;display:flex;align-items:center;justify-content:space-between;padding:calc(18px + var(--safe-t)) 20px 14px;min-height:76px;position:relative}
+.hdr .ttl{position:absolute;left:50%;transform:translateX(-50%);font-size:38px;line-height:1;color:var(--ink);white-space:nowrap}
+.hdr .side{font-size:14px;line-height:1.35;color:var(--ink2);min-width:64px}
+.iconbtn{width:40px;height:40px;display:flex;align-items:center;justify-content:center;border-radius:50%}
+.iconbtn svg{width:24px;height:24px}
+.avatar{border-radius:50%;object-fit:cover;background:var(--card2);display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;overflow:hidden;color:var(--ink2);font-weight:500}
+.avatar img{width:100%;height:100%;object-fit:cover}
+
+/* ── 하단 탭 ── */
+.nav{flex-shrink:0;height:calc(var(--nav-h) + var(--safe-b));padding-bottom:var(--safe-b);background:#fff;display:flex;align-items:center;justify-content:space-around;position:relative;border-top:1px solid #efeee9}
+.nav button{flex:1;height:100%;display:flex;align-items:center;justify-content:center;color:#c9c7c2}
+.nav button.on{color:#222}
+.nav button svg{width:28px;height:28px}
+.planet{position:relative;top:-14px;flex:0 0 76px!important;height:76px!important;border-radius:50%;background:linear-gradient(135deg,var(--planet1),var(--planet2))!important;color:#fff!important;box-shadow:0 6px 18px rgba(109,92,240,.35),0 0 0 8px #fff}
+.planet svg{width:34px!important;height:34px!important}
+
+/* ── 편지함 ── */
+.banner{margin:4px 16px 10px;padding:16px 18px;border-radius:16px;background:var(--card);font-size:15px;line-height:1.55;display:flex;align-items:center;gap:12px}
+.banner .grow{flex:1}
+.banner .pbtn{flex-shrink:0;background:var(--btn);color:#fff;border-radius:12px;padding:10px 14px;font-weight:500;font-size:14px}
+.banner.soft{background:#efeee9}
+.lrow{display:flex;gap:12px;align-items:flex-start;padding:18px 24px 16px;cursor:pointer;min-height:96px}
+.lrow:active{background:rgba(0,0,0,.03)}
+.lrow .main{flex:1;min-width:0}
+.lrow .pv{font-size:17px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--ink)}
+.lrow.unread .pv{font-weight:700}
+.lrow .kind{display:flex;align-items:center;gap:6px;color:var(--ink2);font-size:15px;margin-top:6px}
+.lrow .kind svg{width:20px;height:20px}
+.lrow .dt{color:var(--ink3);font-size:14px;flex-shrink:0;padding-top:3px}
+.dot{width:7px;height:7px;border-radius:50%;background:var(--planet1);display:inline-block;margin-left:4px}
+.empty{padding:60px 30px;text-align:center;color:var(--ink2);line-height:1.8}
+.fab{position:absolute;right:18px;bottom:calc(var(--nav-h) + var(--safe-b) + 16px);background:rgba(90,88,86,.92);color:#fff;border-radius:30px;padding:14px 22px;font-size:17px;font-weight:500;display:flex;align-items:center;gap:6px;box-shadow:0 4px 14px rgba(0,0,0,.15);z-index:5}
+
+/* ── 편지 읽기/쓰기 ── */
+.lhead{display:flex;align-items:center;gap:14px;padding:6px 22px 18px}
+.lhead .who{flex:1;line-height:1.5}
+.lhead .from{font-weight:500;color:var(--ink2);font-size:16px}
+.lhead .to{color:var(--ink3);font-size:15px}
+.lhead .date{color:var(--ink3);font-size:14px;align-self:flex-start;padding-top:4px}
+.lbody{padding:4px 22px 18px;font-size:16.5px;line-height:30px;white-space:pre-wrap;word-break:keep-all;overflow-wrap:anywhere}
+.ltime{padding:10px 22px 14px;font-size:16px;color:var(--ink)}
+.likepill{margin:6px 22px 40px;display:inline-flex;align-items:center;gap:8px;padding:10px 18px;border-radius:14px;border:1px solid #e2e0da;background:#fff;font-size:15px;font-weight:500}
+.likepill .h{font-size:22px;line-height:1;color:#ccc}
+.likepill.on .h{color:var(--heart)}
+.write-area{flex:1;width:100%;border:none;outline:none;resize:none;background:transparent;padding:6px 22px 30px;font-size:16.5px;line-height:30px;color:var(--ink)}
+.wfoot{flex-shrink:0;display:flex;align-items:center;justify-content:space-between;padding:10px 18px calc(12px + var(--safe-b));border-top:1px solid #ecebe6;background:var(--paper)}
+.wfoot .cnt{color:var(--ink3);font-size:13px}
+.primary{background:var(--btn);color:#fff;border-radius:14px;padding:11px 22px;font-weight:500}
+.primary:disabled{opacity:.4}
+.ghost{border:1px solid #d8d6d0;border-radius:14px;padding:10px 16px;color:var(--ink2);background:#fff}
+.danger{color:var(--red)}
+
+/* ── 앨범 ── */
+.polas{display:grid;grid-template-columns:1fr 1fr;gap:18px 14px;padding:8px 18px 120px}
+.pola{background:#f1f0ec;border-radius:4px;padding:10px 10px 0;box-shadow:0 2px 8px rgba(0,0,0,.10);cursor:pointer}
+.pola:nth-child(4n+1){transform:rotate(-1.6deg)}.pola:nth-child(4n+2){transform:rotate(1.2deg) translateY(10px)}
+.pola:nth-child(4n+3){transform:rotate(1deg)}.pola:nth-child(4n){transform:rotate(-1deg) translateY(10px)}
+.pola img{width:100%;aspect-ratio:1/1.1;object-fit:cover;display:block;background:#ddd}
+.pola .cap{font-family:'Nanum Pen Script',cursive;font-size:23px;text-align:center;padding:8px 2px 10px;color:#555;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+/* ── 우리 ── */
+.ushead{background:#e6e5e0;padding:calc(18px + var(--safe-t)) 22px 22px}
+.ushead .ttl2{font-size:38px;text-align:center;line-height:1.1;margin-bottom:14px}
+.chip{display:inline-block;background:#fff;border-radius:16px;padding:4px 14px;font-weight:700;color:#555;font-size:15px}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:16px}
+.stat{background:#fff;border-radius:14px;padding:12px 6px;text-align:center}
+.stat b{display:block;font-size:20px}
+.stat span{font-size:12px;color:var(--ink2)}
+.sec{padding:20px 20px 4px;font-weight:700;color:#666;font-size:16px;display:flex;justify-content:space-between;align-items:center}
+.memcard{margin:10px 16px;background:#fff;border-radius:14px;padding:14px 16px;font-size:14.5px;line-height:1.7;border:1px solid #ecebe6}
+.memcard .md{color:var(--ink3);font-size:12.5px;margin-bottom:6px;display:flex;justify-content:space-between}
+.memcard .mt{white-space:pre-wrap}
+.memcard textarea{width:100%;min-height:180px;border:1px solid #ddd;border-radius:8px;padding:8px;font-size:14px;line-height:1.6}
+
+/* ── 설정 ── */
+.set{padding:0 16px 120px}
+.card{background:#fff;border-radius:16px;padding:16px;margin-bottom:14px;border:1px solid #ecebe6}
+.card h3{font-size:15px;margin-bottom:10px;color:#444}
+.field{margin-bottom:12px}
+.field label{display:block;font-size:13px;color:var(--ink2);margin-bottom:4px}
+.field input[type=text],.field input[type=password],.field input[type=number],.field input[type=date],.field select,.field textarea{width:100%;border:1px solid #dedcd6;border-radius:10px;padding:10px 12px;background:#fbfaf8;outline:none}
+.field textarea{min-height:240px;line-height:1.6;font-size:14px}
+.hint{font-size:12.5px;color:var(--ink2);line-height:1.6;margin-top:4px}
+.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.row>*{flex:1}
+.avrow{display:flex;gap:18px;justify-content:center;margin-bottom:12px}
+.avpick{display:flex;flex-direction:column;align-items:center;gap:6px;font-size:13px;color:var(--ink2);cursor:pointer}
+.toggle{display:flex;align-items:center;justify-content:space-between;padding:6px 0}
+.toggle input{width:22px;height:22px}
+.phgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:10px}
+.ph{position:relative}
+.ph img{width:100%;aspect-ratio:1;object-fit:cover;border-radius:8px;display:block}
+.ph input{width:100%;margin-top:4px;border:1px solid #e0ded8;border-radius:6px;padding:4px 6px;font-size:12px}
+.ph .x{position:absolute;top:4px;right:4px;background:rgba(0,0,0,.55);color:#fff;border-radius:50%;width:22px;height:22px;font-size:13px;line-height:22px;text-align:center}
+.ph .sent{position:absolute;left:4px;top:4px;background:rgba(0,0,0,.5);color:#fff;font-size:10px;border-radius:6px;padding:1px 5px}
+.prog{font-size:13px;color:var(--planet1);margin-top:8px;min-height:18px;white-space:pre-wrap}
+
+/* ── 메신저 ── */
+.chdr{flex-shrink:0;display:flex;align-items:center;justify-content:space-between;padding:calc(14px + var(--safe-t)) 14px 10px}
+.chdr .cbtn{width:46px;height:46px;border-radius:50%;background:#0f0f12;display:flex;align-items:center;justify-content:center;color:#ddd}
+.chdr .cbtn svg{width:24px;height:24px}
+.chdr .who{display:flex;align-items:center;gap:8px;font-size:17px;color:#cfcfd6}
+#chatlist{padding:8px 12px 16px}
+.dsep{text-align:center;color:var(--night-ink2);font-size:12px;margin:18px 0 10px}
+.mrow{display:flex;align-items:flex-end;gap:6px;margin:3px 0}
+.mrow.me{justify-content:flex-end}
+.mrow .av{width:42px;height:42px;align-self:flex-end}
+.mrow .avsp{width:42px;flex-shrink:0}
+.bub{max-width:72%;padding:11px 16px;border-radius:22px;background:var(--bubble);font-size:15.5px;line-height:1.5;white-space:pre-wrap;word-break:keep-all;overflow-wrap:anywhere}
+.me .bub{background:var(--bubble-me)}
+.mt{font-size:11px;color:var(--night-ink2);flex-shrink:0;padding-bottom:2px}
+.bub.img{padding:0;overflow:hidden;background:#333;border-radius:22px;width:62%;max-width:62%}
+.bub.img img{display:block;width:100%;max-height:420px;object-fit:cover;cursor:pointer}
+.typing span{display:inline-block;width:7px;height:7px;border-radius:50%;background:#999;margin:0 2px;animation:blink 1.2s infinite}
+.typing span:nth-child(2){animation-delay:.2s}.typing span:nth-child(3){animation-delay:.4s}
+@keyframes blink{0%,80%,100%{opacity:.25}40%{opacity:1}}
+.cin{flex-shrink:0;display:flex;align-items:flex-end;gap:8px;padding:10px 12px calc(10px + var(--safe-b));background:#232329}
+.cin textarea{flex:1;background:transparent;border:none;outline:none;resize:none;color:var(--night-ink);font-size:16px;line-height:1.5;max-height:120px;padding:8px 6px}
+.cin textarea::placeholder{color:#6c6c76}
+.cin button{width:42px;height:42px;display:flex;align-items:center;justify-content:center;color:#cfcfd6;flex-shrink:0}
+.cin button svg{width:28px;height:28px}
+.cin .send{background:var(--planet1);border-radius:50%;color:#fff}
+.cin .send svg{width:20px;height:20px}
+.pendimg{display:flex;gap:6px;padding:6px 12px 0;background:#232329}
+.pendimg img{height:64px;border-radius:8px}
+.imggrid{display:grid;grid-template-columns:repeat(3,1fr);gap:2px}
+.imggrid img{width:100%;aspect-ratio:1;object-fit:cover;display:block;cursor:pointer}
+
+/* ── 공통 오버레이 ── */
+#viewer{position:fixed;inset:0;background:rgba(0,0,0,.92);display:none;align-items:center;justify-content:center;z-index:50}
+#viewer img{max-width:100%;max-height:100%}
+#toast{position:fixed;left:50%;bottom:110px;transform:translateX(-50%);background:rgba(40,40,44,.92);color:#fff;padding:10px 18px;border-radius:20px;font-size:14px;z-index:60;display:none;max-width:86%;text-align:center}
+.sheet-bg{position:fixed;inset:0;background:rgba(0,0,0,.35);z-index:40;display:none;align-items:flex-end;justify-content:center}
+.sheet{width:100%;max-width:480px;background:#fff;border-radius:18px 18px 0 0;padding:10px 0 calc(14px + var(--safe-b));color:var(--ink)}
+.sheet button{display:block;width:100%;text-align:left;padding:15px 24px;font-size:16px}
+.sheet button:active{background:#f3f2ee}
+</style>
+</head>
+<body>
+<div id="app">
+
+<!-- ════════ 편지 앱 (탭: 편지함 / 앨범 / 우리 / 전체) ════════ -->
+<section id="v-main" class="view light active">
+  <!-- 편지함 -->
+  <div id="t-inbox" class="tab scroll">
+    <div class="hdr">
+      <div class="side" id="inboxSide"></div>
+      <div class="ttl hand">편지함</div>
+      <button class="iconbtn" onclick="setTab('settings')" aria-label="전체"><span class="avatar" id="hdrAvatar" style="width:40px;height:40px"></span></button>
+    </div>
+    <div id="inboxBanners"></div>
+    <div id="inboxList"></div>
+    <div style="height:110px"></div>
+  </div>
+  <!-- 앨범 -->
+  <div id="t-album" class="tab scroll hide">
+    <div class="hdr"><div class="side"></div><div class="ttl hand" id="albumTitle">기억</div><div class="side"></div></div>
+    <div id="albumBody"></div>
+  </div>
+  <!-- 우리 -->
+  <div id="t-us" class="tab scroll hide"><div id="usBody"></div></div>
+  <!-- 전체(설정) -->
+  <div id="t-settings" class="tab scroll hide">
+    <div class="hdr"><div class="side"></div><div class="ttl hand">전체</div><div class="side"></div></div>
+    <div class="set" id="setBody"></div>
+  </div>
+
+  <button class="fab" id="fab" onclick="openWrite()">＋ 편지 쓰기</button>
+  <nav class="nav">
+    <button data-tab="inbox" onclick="setTab('inbox')" aria-label="편지함"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M4 5h16a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2zm0 2v.4l8 5.1 8-5.1V7H4z"/></svg></button>
+    <button data-tab="album" onclick="setTab('album')" aria-label="기억"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M4 9h16v9a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V9zm.3-2.2L18.6 3.4l.7 2.7L5 9.5l-.7-2.7z"/></svg></button>
+    <button class="planet" onclick="openChat()" aria-label="메신저"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="6"/><path d="M4.5 16.5C2 19 2 20.5 3 21s3.5-.3 7-3m4-2.5c3.5-2.7 6.3-6 7-8 .8-2.3-1.5-2.3-4.5-.5"/></svg></button>
+    <button data-tab="us" onclick="setTab('us')" aria-label="우리"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M5 3h14a2 2 0 0 1 2 2v11a2 2 0 0 1-2 2h-5l-2 3-2-3H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2zm7 12.2l3.6-3.5a2.2 2.2 0 0 0-3.1-3.1l-.5.5-.5-.5a2.2 2.2 0 0 0-3.1 3.1L12 15.2z"/></svg></button>
+    <button data-tab="settings" onclick="setTab('settings')" aria-label="전체"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M4 6h16M4 12h16M4 18h16"/></svg></button>
+  </nav>
+</section>
+
+<!-- ════════ 편지 읽기 ════════ -->
+<section id="v-read" class="view light">
+  <div class="hdr"><button class="iconbtn" onclick="closeRead()" aria-label="뒤로"><svg viewBox="0 0 24 24" fill="none" stroke="#666" stroke-width="1.8"><path d="M20 12H4m6-7-7 7 7 7"/></svg></button><div></div><button class="iconbtn" onclick="readMenu()" aria-label="메뉴"><svg viewBox="0 0 24 24" fill="#999"><circle cx="5" cy="12" r="1.8"/><circle cx="12" cy="12" r="1.8"/><circle cx="19" cy="12" r="1.8"/></svg></button></div>
+  <div class="scroll" id="readBody"></div>
+</section>
+
+<!-- ════════ 편지 쓰기 ════════ -->
+<section id="v-write" class="view light">
+  <div class="hdr"><button class="iconbtn" onclick="closeWrite()" aria-label="뒤로"><svg viewBox="0 0 24 24" fill="none" stroke="#666" stroke-width="1.8"><path d="M20 12H4m6-7-7 7 7 7"/></svg></button><div class="ttl hand" style="font-size:32px">편지 쓰기</div><div></div></div>
+  <div class="lhead"><span class="avatar" id="writeAv" style="width:56px;height:56px"></span><div class="who"><div class="from" id="writeFrom"></div><div class="to" id="writeTo"></div></div></div>
+  <textarea class="write-area" id="writeText" placeholder="마음을 꾹꾹 눌러 담아 적어보세요." oninput="onWriteInput()"></textarea>
+  <div class="wfoot"><span class="cnt" id="writeCnt">0자</span><button class="primary" id="sendLetterBtn" onclick="sendLetter()" disabled>보내기</button></div>
+</section>
+
+<!-- ════════ 메신저 ════════ -->
+<section id="v-chat" class="view dark">
+  <div class="chdr">
+    <button class="cbtn" onclick="closeChat()" aria-label="편지함으로"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 12H4m6-7-7 7 7 7"/></svg></button>
+    <div class="who"><span class="avatar" id="chatAv" style="width:36px;height:36px"></span><span id="chatName"></span></div>
+    <button class="cbtn" onclick="chatMenu()" aria-label="메뉴"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M5 7h14M5 12h14M5 17h14"/></svg></button>
+  </div>
+  <div class="scroll" id="chatScroll"><div id="chatlist"></div></div>
+  <div class="pendimg hide" id="pendImg"></div>
+  <div class="cin">
+    <textarea id="chatInput" rows="1" placeholder="메시지를 입력하세요" oninput="onChatInput()" onkeydown="onChatKey(event)"></textarea>
+    <button id="chatImgBtn" onclick="document.getElementById('chatImgFile').click()" aria-label="사진"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="3" y="3" width="18" height="18" rx="3"/><circle cx="9" cy="9" r="2"/><path d="m21 15-5-5L5 21"/></svg></button>
+    <button id="chatSendBtn" class="send hide" onclick="sendChat()" aria-label="보내기"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M3 20.5 21 12 3 3.5 3 10l12 2-12 2z"/></svg></button>
+    <input type="file" id="chatImgFile" accept="image/*" class="hide" onchange="onChatImg(this)">
+  </div>
+</section>
+
+<!-- ════════ 이미지 목록 ════════ -->
+<section id="v-photos" class="view dark">
+  <div class="chdr"><button class="cbtn" onclick="show('v-chat')" aria-label="뒤로"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 12H4m6-7-7 7 7 7"/></svg></button><div class="who">이미지 목록</div><div style="width:46px"></div></div>
+  <div class="scroll"><div class="imggrid" id="photoGrid"></div></div>
+</section>
+
+</div>
+
+<div id="viewer" onclick="this.style.display='none'"><img id="viewerImg" alt=""></div>
+<div id="toast"></div>
+<div class="sheet-bg" id="sheetBg" onclick="if(event.target===this)closeSheet()"><div class="sheet" id="sheet"></div></div>
+<input type="file" id="fileLetters" accept=".txt,text/plain" class="hide" onchange="onImportLetters(this)">
+<input type="file" id="fileBackup" accept=".json,application/json" class="hide" onchange="onImportBackup(this)">
+<input type="file" id="filePhotos" accept="image/*" multiple class="hide" onchange="onAddPhotos(this)">
+<input type="file" id="fileAvatar" accept="image/*" class="hide" onchange="onAvatar(this)">
+
+<script>
+/* ══════════════════════ 설정 / 상태 ══════════════════════ */
+// provider kind: 'anthropic'(Claude) / 'google'(Gemini) / 'openai'(OpenAI 호환 — ChatGPT와 로컬 Ollama가 이 형식)
+const PROVIDERS={
+  claude:{label:'Claude',kind:'anthropic',defaultModel:'claude-sonnet-5-5'},
+  gemini:{label:'Gemini',kind:'google',defaultModel:'gemini-3.6-flash'},
+  openai:{label:'ChatGPT',kind:'openai',baseUrl:'https://api.openai.com/v1',defaultModel:'gpt-4o'},
+  local:{label:'로컬 모델 (Ollama)',kind:'openai',defaultModel:'',noKey:true},
+};
+// 레포가 공개라서 실제 인물·대화 내용은 여기 넣지 않는다. 이름과 설정은 모두 앱 안에서 입력한다. 자세한 설정은 앱에서 편지를 불러온 뒤 "편지로 설정 만들기"로 채운다.
+const DEFAULT_SHEET=`[기본 정보]
+- 이름, 나이, 하는 일, 사는 곳
+
+[성격]
+- 다정하고 애정 표현을 아끼지 않음
+- 상대의 하루와 감정을 세심하게 챙김
+
+[말투]
+- 상대를 편하게 반말로 부름
+- 편지는 길고 진심을 담아, 메시지는 짧고 다정하게
+
+※ 편지를 불러온 뒤 '편지로 설정 만들기'를 누르면 실제 편지를 바탕으로 이 설정이 자세하게 채워져요.`;
+const DEF={
+  provider:'claude',keys:{},models:{},localUrl:'http://localhost:11434/v1',
+  userName:'',charName:'',charFull:'',charSheet:DEFAULT_SHEET,
+  startDate:'',userAvatar:'',charAvatar:'',
+  minDelay:1,maxDelay:5,spontaneous:true,spontFrom:19,spontTo:20,lastSpontDay:'',memUpTo:0,
+};
+let db=null,S=null;
+let L=[],C=[],P=[],M=[];      // 편지, 채팅, 사진, 기억(요약)
+let curTab='inbox',readId=null,pendingChatImg=null;
+const generating=new Set();
+let chatTimer=null,chatBusy=false,memBusy=false;
+
+/* ══════════════════════ 유틸 ══════════════════════ */
+const $=id=>document.getElementById(id);
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+function esc(s){const d=document.createElement('div');d.textContent=s==null?'':String(s);return d.innerHTML;}
+function hasBatchim(w){if(!w)return false;const c=w.charCodeAt(w.length-1);return c>=0xAC00&&c<=0xD7A3&&(c-0xAC00)%28>0;}
+function josa(w,pair){const[a,b]=pair.split('/');return w+(hasBatchim(w)?a:b);}
+function nick(w){return hasBatchim(w)?w+'이':w;}             // 받침 있는 이름 뒤에 '이' (예: 지안 → 지안이)
+function uName(){return S.userName||'나';}
+function cName(){return S.charName||'상대';}
+function pad(n){return String(n).padStart(2,'0');}
+function fmtDate(ts){const d=new Date(ts);return d.getFullYear()+'.'+pad(d.getMonth()+1)+'.'+pad(d.getDate());}
+function fmtTimeEn(ts){return new Date(ts).toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'});}
+function fmtTimeKo(ts){const d=new Date(ts);let h=d.getHours();const ap=h<12?'오전':'오후';h=h%12||12;return ap+' '+h+':'+pad(d.getMinutes());}
+function fmtNow(){return new Intl.DateTimeFormat('ko-KR',{year:'numeric',month:'long',day:'numeric',weekday:'short',hour:'2-digit',minute:'2-digit',hour12:false}).format(new Date());}
+function dayKey(ts){const d=new Date(ts);return d.getFullYear()+'-'+d.getMonth()+'-'+d.getDate();}
+function rand(a,b){return a+Math.random()*(b-a);}
+function toast(msg,ms){const t=$('toast');t.textContent=msg;t.style.display='block';clearTimeout(t._h);t._h=setTimeout(()=>t.style.display='none',ms||2600);}
+function lsGet(k){try{return localStorage.getItem(k);}catch(e){return null;}}
+function lsSet(k,v){try{v==null?localStorage.removeItem(k):localStorage.setItem(k,v);}catch(e){}}
+function avatarHTML(src,name,size){
+  const s=size||40;
+  return `<span class="avatar" style="width:${s}px;height:${s}px;font-size:${Math.round(s*.4)}px">${src?`<img src="${src}" alt="">`:esc((name||'?').slice(0,1))}</span>`;
+}
+function setAvatar(el,src,name){el.innerHTML=src?`<img src="${src}" alt="">`:esc((name||'?').slice(0,1));}
+function startTs(){
+  if(S.startDate){const t=new Date(S.startDate+'T00:00:00').getTime();if(!isNaN(t))return t;}
+  const first=L.length?Math.min(...L.map(l=>l.ts)):Date.now();
+  return first;
+}
+function dPlus(){
+  const a=new Date(startTs());a.setHours(0,0,0,0);
+  const b=new Date();b.setHours(0,0,0,0);
+  return Math.round((b-a)/86400000)+1;
+}
+
+/* ══════════════════════ IndexedDB ══════════════════════ */
+function openDB(){
+  return new Promise((res,rej)=>{
+    const r=indexedDB.open('lettersAppDB',1);
+    r.onupgradeneeded=e=>{
+      const d=e.target.result;
+      d.createObjectStore('kv',{keyPath:'key'});
+      d.createObjectStore('letters',{keyPath:'id',autoIncrement:true});
+      d.createObjectStore('chats',{keyPath:'id',autoIncrement:true});
+      d.createObjectStore('photos',{keyPath:'id',autoIncrement:true});
+      d.createObjectStore('mems',{keyPath:'id',autoIncrement:true});
+    };
+    r.onsuccess=e=>res(e.target.result);r.onerror=e=>rej(e.target.error);
+  });
+}
+function tx(store,mode){return db.transaction(store,mode||'readonly').objectStore(store);}
+function req2p(r){return new Promise((res,rej)=>{r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error);});}
+const dbAll=s=>req2p(tx(s).getAll());
+const dbGet=(s,k)=>req2p(tx(s).get(k));
+async function dbPut(s,v){const id=await req2p(tx(s,'readwrite').put(v));if(v.id===undefined)v.id=id;return id;}
+const dbDel=(s,k)=>req2p(tx(s,'readwrite').delete(k));
+const dbClear=s=>req2p(tx(s,'readwrite').clear());
+async function saveS(){await dbPut('kv',{key:'S',value:S});}
+
+/* ══════════════════════ 부팅 ══════════════════════ */
+async function boot(){
+  db=await openDB();
+  const s=await dbGet('kv','S');
+  S=Object.assign({},DEF,s?s.value:{});
+  [L,C,P,M]=await Promise.all(['letters','chats','photos','mems'].map(dbAll));
+  sortAll();
+  renderAll();
+  if(!S.userName||!S.charName||!(PROVIDERS[S.provider].noKey||S.keys[S.provider]))setTab('settings');
+  // 답장 생성이 끊긴 채로 앱이 닫혔던 편지가 있으면 이어서 쓰게 한다.
+  tick();
+  setInterval(tick,5000);
+  document.addEventListener('visibilitychange',()=>{if(!document.hidden)tick();});
+}
+function sortAll(){L.sort((a,b)=>a.ts-b.ts);C.sort((a,b)=>a.ts-b.ts||a.id-b.id);M.sort((a,b)=>a.fromTs-b.fromTs);P.sort((a,b)=>a.id-b.id);}
+function renderAll(){renderInbox();renderAlbum();renderUs();renderSettings();renderHeaderBits();}
+function renderHeaderBits(){
+  setAvatar($('hdrAvatar'),S.userAvatar,uName());
+  $('albumTitle').textContent=nick(cName())+'와의 기억';
+}
+
+/* ══════════════════════ 화면 전환 ══════════════════════ */
+function show(id){document.querySelectorAll('.view').forEach(v=>v.classList.toggle('active',v.id===id));}
+function setTab(t){
+  curTab=t;
+  document.querySelectorAll('.tab').forEach(el=>el.classList.toggle('hide',el.id!=='t-'+t));
+  document.querySelectorAll('.nav button[data-tab]').forEach(b=>b.classList.toggle('on',b.dataset.tab===t));
+  $('fab').classList.toggle('hide',t!=='inbox');
+  if(t==='inbox')renderInbox();
+  if(t==='album')renderAlbum();
+  if(t==='us')renderUs();
+  if(t==='settings')renderSettings();
+  show('v-main');
+}
+
+/* ══════════════════════ LLM 호출 ══════════════════════ */
+async function fetchRetry(url,opts,tries){
+  tries=tries===undefined?2:tries;
+  for(let i=0;;i++){
+    const r=await fetch(url,opts);
+    if((r.status!==429&&r.status!==529&&r.status!==503)||i>=tries)return r;
+    await sleep(1500*Math.pow(2,i));
+  }
+}
+async function readJson(r){const t=await r.text().catch(()=>'');try{return JSON.parse(t);}catch(e){return{_raw:t};}}
+function apiErr(label,r,d){
+  if(r.status===429)return new Error(label+': 요청이 너무 많아요. 잠시 후 다시 시도해 주세요.');
+  const m=d?.error?.message||(typeof d?.error==='string'?d.error:'')||(d?._raw||'').slice(0,200);
+  return new Error(label+': '+(m||('오류 '+r.status)));
+}
+// messages: [{role:'user'|'assistant', content:string, imgs?:[{mime,b64}]}]
+async function callLLM({sys,messages,maxTokens,temperature}){
+  maxTokens=maxTokens||2000;
+  const p=S.provider,cfg=PROVIDERS[p];
+  const key=(S.keys[p]||'').trim();
+  const model=((S.models[p]||'').trim())||cfg.defaultModel;
+  if(!cfg.noKey&&!key)throw new Error(cfg.label+' API 키가 없어요. 전체 탭에서 입력해 주세요.');
+  if(!model)throw new Error('모델 이름이 비어 있어요. 전체 탭에서 입력해 주세요.');
+  if(cfg.kind==='anthropic'){
+    const am=messages.map(m=>({role:m.role,content:m.imgs&&m.imgs.length?[...m.imgs.map(i=>({type:'image',source:{type:'base64',media_type:i.mime,data:i.b64}})),{type:'text',text:m.content||'(사진)'}]:m.content}));
+    const r=await fetchRetry('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json','x-api-key':key,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},body:JSON.stringify({model,max_tokens:maxTokens,system:sys,messages:am})});
+    const d=await readJson(r);
+    if(!r.ok||d.error)throw apiErr(cfg.label,r,d);
+    return (d.content||[]).filter(b=>b.type==='text').map(b=>b.text).join('');
+  }
+  if(cfg.kind==='google'){
+    const gm=messages.map(m=>({role:m.role==='assistant'?'model':'user',parts:[...(m.imgs||[]).map(i=>({inline_data:{mime_type:i.mime,data:i.b64}})),{text:m.content||'(사진)'}]}));
+    const body={system_instruction:{parts:[{text:sys}]},contents:gm,generationConfig:{maxOutputTokens:Math.max(maxTokens*3,6000),temperature:temperature??1.0,thinkingConfig:{thinkingBudget:1024}},
+      safetySettings:['HARM_CATEGORY_SEXUALLY_EXPLICIT','HARM_CATEGORY_HATE_SPEECH','HARM_CATEGORY_HARASSMENT','HARM_CATEGORY_DANGEROUS_CONTENT'].map(c=>({category:c,threshold:'BLOCK_NONE'}))};
+    const r=await fetchRetry(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(key)}`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+    const d=await readJson(r);
+    if(!r.ok||d.error)throw apiErr(cfg.label,r,d);
+    // 생각(thought) 파트는 빼고 실제 답만 이어 붙인다.
+    return (d.candidates?.[0]?.content?.parts||[]).filter(x=>!x.thought).map(x=>x.text||'').join('');
+  }
+  const base=(p==='local'?S.localUrl:cfg.baseUrl).replace(/\/+$/,'');
+  const om=messages.map(m=>({role:m.role,content:m.imgs&&m.imgs.length?[{type:'text',text:m.content||'(사진)'},...m.imgs.map(i=>({type:'image_url',image_url:{url:`data:${i.mime};base64,${i.b64}`}}))]:m.content}));
+  const headers={'Content-Type':'application/json'};
+  if(key)headers.Authorization='Bearer '+key;
+  const r=await fetchRetry(base+'/chat/completions',{method:'POST',headers,body:JSON.stringify({model,max_tokens:maxTokens,temperature:temperature??0.9,messages:[{role:'system',content:sys},...om]})});
+  const d=await readJson(r);
+  if(!r.ok||d.error)throw apiErr(cfg.label,r,d);
+  return d.choices?.[0]?.message?.content||'';
+}
+
+/* ══════════════════════ 프롬프트 ══════════════════════ */
+function memText(){
+  if(!M.length)return '';
+  return M.map(m=>`[${fmtDate(m.fromTs)} ~ ${fmtDate(m.toTs)}]\n${m.content}`).join('\n\n');
+}
+function letterLine(l){return `[${fmtDate(l.ts)} ${fmtTimeKo(l.ts)} · ${l.from==='char'?cName():uName()}의 편지]\n${l.body.length>1800?l.body.slice(0,1800)+'…':l.body}`;}
+function chatLine(c){
+  const who=c.from==='char'?cName():uName();
+  let t=c.text||'';
+  if(c.photoId){const ph=P.find(p=>p.id===c.photoId);t='(사진을 보냄'+(ph&&ph.tags?': '+ph.tags:'')+')';}
+  else if(c.img)t='(사진을 보냄)'+(t?' '+t:'');
+  return `${fmtTimeKo(c.ts)} ${who}: ${t}`;
+}
+function buildSys(mode,excludeId){
+  const u=uName(),c=cName();
+  let s=`당신은 ${S.charFull||c}(${c})입니다. ${josa(u,'과/와')} 편지와 메신저로 마음을 주고받는 사이입니다.
+아래 설정과 기억을 바탕으로, 언제나 ${josa(c,'으로서/로서')}만 말하세요.
+
+[캐릭터 설정]
+${S.charSheet||DEFAULT_SHEET}`;
+  const mt=memText();
+  if(mt)s+=`\n\n[지금까지 둘이 함께한 기억 — 사실관계는 여기서 벗어나지 말 것]\n${mt}`;
+  const recentLetters=L.filter(l=>l.body&&l.status!=='pending'&&l.id!==excludeId).slice(mode==='letter'?-4:-2);
+  if(recentLetters.length)s+=`\n\n[최근에 주고받은 편지]\n`+recentLetters.map(letterLine).join('\n\n');
+  if(mode==='letter'){
+    const rc=C.slice(-30);
+    if(rc.length)s+=`\n\n[최근 메신저 대화]\n`+rc.map(chatLine).join('\n');
+  }
+  s+=`\n\n[현재 시각]\n${fmtNow()}`;
+  s+=`\n\n[공통 규칙]
+- AI, 언어모델, 시스템, 프롬프트 같은 말은 절대 하지 않는다. ${josa(c,'은/는')} 실제로 살아 있는 사람이다.
+- 기억에 없는 큰 사건을 새로 지어내지 않는다. 모르는 건 자연스럽게 묻는다.
+- ${josa(u,'을/를')} 부르는 호칭과 말버릇은 설정과 최근 편지·메시지에서 쓰던 그대로 유지한다.`;
+  if(mode==='letter'){
+    s+=`\n\n[편지 작성 규칙]
+- 편지 본문만 쓴다. 날짜, From/To 머리말, 따옴표, 설명은 붙이지 않는다.
+- 최근 ${c}의 편지와 비슷한 길이·문단 구성·문체로 쓴다.
+- 상대 편지의 구체적인 내용(사건, 감정, 질문)에 하나하나 반응한다.
+- 현재 시각과 계절, ${c}의 요즘 일상을 자연스럽게 녹인다.`;
+  }else{
+    s+=`\n\n[메신저 규칙]
+- 카카오톡처럼 짧은 메시지 1~4개로 답한다. 메시지마다 줄을 바꿔 구분하고, 한 메시지는 1~2문장.
+- 행동 묘사(*...*), 괄호 지문, 따옴표, 이름표("${c}:")는 쓰지 않는다. 실제로 폰으로 보내는 말만.
+- 이모지는 가끔, 자연스러울 때만.`;
+    if(P.length){
+      s+=`\n- 지금 상황에 어울리면 가끔 셀카나 사진을 보낼 수 있다. 보낼 때는 따로 한 줄에 [사진: 상황 키워드] 형식으로만 적는다. (예: [사진: 차 안 셀카]) 보낼 수 있는 사진 종류: ${[...new Set(P.map(p=>p.tags).filter(Boolean))].slice(0,40).join(', ')||'일상 사진'}`;
+    }
+  }
+  return s;
+}
+function cleanLetter(t){
+  t=(t||'').replace(/```[a-z]*\n?|```/g,'').trim();
+  const lines=t.split('\n');
+  // 모델이 머리말(날짜/From/To)을 붙였으면 떼어낸다.
+  while(lines.length&&/^\s*(\d{4}[.\-\/]\d{1,2}[.\-\/]\d{1,2}|From\.?|To\.?)/i.test(lines[0]))lines.shift();
+  return lines.join('\n').trim();
+}
+
+/* ══════════════════════ 편지 ══════════════════════ */
+function renderInbox(){
+  if(!S)return;
+  const c=cName();
+  $('inboxSide').innerHTML=`${esc(nick(c))}와<br>D+${dPlus()}`;
+  let ban='';
+  const pend=L.filter(l=>l.from==='char'&&l.status==='pending');
+  for(const p of pend){
+    if(p.err){
+      ban+=`<div class="banner"><div class="grow">답장을 받지 못했어요.<br><span style="font-size:13px;color:var(--ink2)">${esc(p.err)}</span></div><button class="pbtn" onclick="retryLetter(${p.id})">다시 시도</button></div>`;
+    }else{
+      const left=Math.max(0,Math.ceil((p.deliverAt-Date.now())/60000));
+      ban+=`<div class="banner soft"><div class="grow">${esc(josa(nick(c),'가/가'))} 편지를 쓰고 있어요 ✍️<br><span style="font-size:13px;color:var(--ink2)">${left>0?`${left}분 안에 도착해요`:'곧 도착해요'}</span></div></div>`;
+    }
+  }
+  $('inboxBanners').innerHTML=ban;
+  const list=L.filter(l=>l.status!=='pending').slice().reverse();
+  if(!list.length){
+    $('inboxList').innerHTML=`<div class="empty">아직 주고받은 편지가 없어요.<br>아래 <b>＋ 편지 쓰기</b>로 첫 편지를 보내거나,<br>전체 탭에서 예전 편지를 불러올 수 있어요.</div>`;
+    return;
+  }
+  const recv='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 10l9-6 9 6v9a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1z"/><path d="m3 10 9 6 9-6"/></svg>';
+  const sent='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 3 3 10.5l7 2.5 2.5 7z"/><path d="m10 13 4-4"/></svg>';
+  // 수백 통이어도 처음엔 120통만 그리고, 끝까지 내리면 더 그린다.
+  const limit=$('inboxList')._limit||120;
+  $('inboxList').innerHTML=list.slice(0,limit).map(l=>{
+    const pv=(l.body||'').replace(/\s+/g,' ').trim();
+    const unread=l.from==='char'&&!l.read;
+    return `<div class="lrow${unread?' unread':''}" onclick="openRead(${l.id})"><div class="main"><div class="pv">${esc(pv)}</div><div class="kind">${l.from==='char'?recv+'받은 편지':sent+'보낸 편지'}${unread?'<span class="dot"></span>':''}</div></div><div class="dt">${fmtDate(l.ts)}</div></div>`;
+  }).join('')+(list.length>limit?`<div class="empty" style="padding:20px"><button class="ghost" onclick="$('inboxList')._limit=${limit+200};renderInbox()">이전 편지 더 보기 (${list.length-limit}통)</button></div>`:'');
+}
+function openRead(id){
+  const l=L.find(x=>x.id===id);if(!l)return;
+  readId=id;
+  if(l.from==='char'&&!l.read){l.read=true;dbPut('letters',l);}
+  const isChar=l.from==='char';
+  const fromN=isChar?cName():uName(),toN=isChar?uName():cName();
+  const av=isChar?S.charAvatar:S.userAvatar;
+  let like='';
+  if(isChar)like=`<button class="likepill${l.liked?' on':''}" onclick="toggleLike(${l.id})"><span class="h">${l.liked?'♥':'♡'}</span>${l.liked?esc(uName())+'님이 좋아합니다':'좋아요'}</button>`;
+  else if(L.some(x=>x.replyTo===l.id&&x.status!=='pending'))like=`<div class="likepill on"><span class="h">♥</span>${esc(cName())}님이 좋아합니다</div>`;
+  $('readBody').innerHTML=`<div class="lhead">${avatarHTML(av,fromN,56)}<div class="who"><div class="from">From. ${esc(fromN)}</div><div class="to">To. ${esc(toN)}</div></div><div class="date">${fmtDate(l.ts)}</div></div>
+    <div class="lbody">${esc(l.body)}</div><div class="ltime">${l.imported?'':fmtTimeEn(l.ts)}</div>${like}<div style="height:40px"></div>`;
+  $('readBody').scrollTop=0;
+  show('v-read');
+}
+function closeRead(){readId=null;renderInbox();show('v-main');}
+async function toggleLike(id){const l=L.find(x=>x.id===id);l.liked=!l.liked;await dbPut('letters',l);openRead(id);}
+function readMenu(){
+  const l=L.find(x=>x.id===readId);if(!l)return;
+  const items=[];
+  if(l.from==='char')items.push(['이 편지 다시 받기',()=>regenLetter(l.id)]);
+  items.push(['본문 복사',()=>{navigator.clipboard?.writeText(l.body).then(()=>toast('복사했어요'));}]);
+  items.push(['편지 삭제',()=>{if(confirm('이 편지를 삭제할까요?'))deleteLetter(l.id);},true]);
+  openSheet(items);
+}
+async function deleteLetter(id){
+  await dbDel('letters',id);L=L.filter(x=>x.id!==id);
+  closeRead();toast('삭제했어요');
+}
+async function regenLetter(id){
+  const l=L.find(x=>x.id===id);if(!l)return;
+  if(!confirm('이 편지를 새로 받을까요? 지금 내용은 사라져요.'))return;
+  l.status='pending';l.body='';l.err='';l.deliverAt=Date.now()+60*1000;l.read=false;
+  await dbPut('letters',l);
+  closeRead();tick();
+}
+const DRAFT_KEY='lettersDraft';
+function openWrite(){
+  setAvatar($('writeAv'),S.userAvatar,uName());
+  $('writeFrom').textContent='From. '+uName();
+  $('writeTo').textContent='To. '+cName();
+  $('writeText').value=lsGet(DRAFT_KEY)||'';
+  onWriteInput();
+  show('v-write');
+  setTimeout(()=>$('writeText').focus(),50);
+}
+function closeWrite(){show('v-main');}
+function onWriteInput(){
+  const v=$('writeText').value;lsSet(DRAFT_KEY,v||null);
+  $('writeCnt').textContent=v.replace(/\s/g,'').length+'자';
+  $('sendLetterBtn').disabled=!v.trim();
+}
+async function sendLetter(){
+  const body=$('writeText').value.trim();if(!body)return;
+  if(!S.userName){toast('먼저 전체 탭에서 내 이름을 정해 주세요');return;}
+  const now=Date.now();
+  const mine={from:'user',ts:now,body,status:'delivered'};
+  await dbPut('letters',mine);L.push(mine);
+  const lo=Math.max(0,+S.minDelay||0),hi=Math.max(lo,+S.maxDelay||lo);
+  const reply={from:'char',ts:now+1,body:'',status:'pending',replyTo:mine.id,deliverAt:now+rand(lo,hi)*60000,read:false};
+  await dbPut('letters',reply);L.push(reply);
+  lsSet(DRAFT_KEY,null);$('writeText').value='';
+  setTab('inbox');
+  toast(`편지를 보냈어요. ${hi>0?`${Math.ceil(hi)}분 안에 답장이 와요`:'곧 답장이 와요'}`);
+  tick();
+}
+async function retryLetter(id){const l=L.find(x=>x.id===id);if(!l)return;l.err='';await dbPut('letters',l);renderInbox();genLetter(l);}
+async function genLetter(l){
+  if(generating.has(l.id))return;
+  generating.add(l.id);
+  try{
+    const c=cName(),u=uName();
+    let msg;
+    if(l.replyTo){
+      const src=L.find(x=>x.id===l.replyTo);
+      msg=`[${fmtDate(src?.ts||Date.now())} ${josa(u,'이/가')} ${c}에게 보낸 편지]\n\n${src?.body||''}\n\n위 편지에 ${josa(c,'으로서/로서')} 답장을 써줘.`;
+    }else{
+      msg=`(${fmtTimeKo(l.ts)}, ${josa(c,'은/는')} 문득 ${u}에게 먼저 편지를 쓰고 싶어졌다. 요즘 ${c}의 일상, 최근 대화에서 마음에 남은 것, ${u}에게 하고 싶은 말을 담아 먼저 편지를 써줘.)`;
+    }
+    const out=cleanLetter(await callLLM({sys:buildSys('letter',l.replyTo),messages:[{role:'user',content:msg}],maxTokens:3000}));
+    if(!out)throw new Error('빈 답장이 왔어요. 다시 시도해 주세요.');
+    l.body=out;l.err='';
+    if(!l.spontaneous&&l.ts<Date.now()-60000)l.ts=Math.max(l.ts,Date.now()); // 다시 받기 등으로 늦게 쓴 편지는 쓴 시각으로
+  }catch(e){
+    l.err=e.message||String(e);
+  }finally{
+    generating.delete(l.id);
+    await dbPut('letters',l);
+    renderInbox();
+    tick();
+  }
+}
+// 5초마다: 다 쓴 편지 배달, 안 쓴 편지 생성 시작, 먼저 보내는 편지 예약
+async function tick(){
+  if(!S)return;
+  const now=Date.now();
+  let delivered=null;
+  for(const l of L){
+    if(l.from!=='char'||l.status!=='pending')continue;
+    if(!l.body&&!l.err&&!generating.has(l.id))genLetter(l);
+    if(l.body&&now>=l.deliverAt){
+      l.status='delivered';if(!l.spontaneous)l.ts=Math.max(l.ts,l.deliverAt);
+      await dbPut('letters',l);delivered=l;
+    }
+  }
+  if(delivered){
+    sortAll();renderInbox();
+    const msg=`${josa(nick(cName()),'에게서/에게서')} 편지가 도착했어요 💌`;
+    toast(msg,3500);
+    notify(msg,delivered.body.slice(0,80));
+    maybeAutoMemory();
+  }else if(curTab==='inbox'&&L.some(l=>l.status==='pending'))renderInbox();
+  // 먼저 보내는 편지: 하루 한 번, 정해둔 시간대(기본 저녁 7~8시) 안의 랜덤한 시각에 상대가 먼저 쓴다.
+  // 그 시각에 앱이 닫혀 있었다면 그날 안에 앱을 열 때 그 시각으로 도착한다. 지나간 날은 몰아서 보내지 않는다.
+  const today=dayKey(now);
+  if(S.spontaneous&&S.userName&&hasKey()&&S.lastSpontDay!==today&&!L.some(l=>l.status==='pending')){
+    const slot=spontSlot(now);
+    if(now>=slot){
+      S.lastSpontDay=today;await saveS();
+      const l={from:'char',ts:slot,body:'',status:'pending',deliverAt:slot,read:false,spontaneous:true};
+      await dbPut('letters',l);L.push(l);genLetter(l);renderInbox();
+    }
+  }
+}
+function hasKey(){return PROVIDERS[S.provider].noKey||!!(S.keys[S.provider]||'').trim();}
+// 날짜마다 정해지는 랜덤 시각. 같은 날 앱을 다시 열어도 시각이 바뀌지 않도록 날짜로 시드를 만든다.
+function spontSlot(now){
+  const d=new Date(now);
+  let h=2166136261;for(const ch of dayKey(now)+'|spont'){h^=ch.charCodeAt(0);h=Math.imul(h,16777619);}
+  const frac=((h>>>0)%100000)/100000;
+  const from=Math.min(23,Math.max(0,+S.spontFrom||0));
+  let to=Math.min(24,Math.max(0,+S.spontTo||0));if(to<=from)to=Math.min(24,from+1);
+  const start=new Date(d.getFullYear(),d.getMonth(),d.getDate(),from,0,0).getTime();
+  return start+Math.floor(frac*(to-from)*3600000);
+}
+function notify(title,body){
+  if(!document.hidden)return;
+  try{
+    if('Notification' in window&&Notification.permission==='granted'&&navigator.serviceWorker){
+      navigator.serviceWorker.ready.then(r=>r.showNotification(title,{body,icon:'icons/icon-192.png',tag:'letter'})).catch(()=>{});
+    }
+  }catch(e){}
+}
+
+/* ══════════════════════ 편지 txt 불러오기 ══════════════════════ */
+// 형식: 날짜 줄 / From. 이름 / To. 이름 / 본문, 편지 사이는 --- 로 구분 (최신순이든 과거순이든 상관없음)
+function parseLettersTxt(text){
+  const parts=text.replace(/\r\n?/g,'\n').split(/\n\s*-{3,}\s*\n/).map(s=>s.trim()).filter(Boolean);
+  const out=[];
+  const cn=cName(),un=S.userName;
+  for(const p of parts){
+    const lines=p.split('\n');
+    let date=null,fromN=null,toN=null,bodyStart=0;
+    for(let i=0;i<Math.min(lines.length,6);i++){
+      const ln=lines[i].trim();
+      let m;
+      if(!date&&(m=ln.match(/^(\d{4})[.\-\/]\s*(\d{1,2})[.\-\/]\s*(\d{1,2})/))){date=new Date(+m[1],+m[2]-1,+m[3],12,0,0);bodyStart=i+1;continue;}
+      if(fromN===null&&(m=ln.match(/^From\.?\s*(.*)$/i)||ln.match(/^(\S+)\s+From\.?$/i))){fromN=m[1].trim();bodyStart=i+1;continue;}  // "이름 From." 처럼 뒤바뀐 것도
+      if(toN===null&&(m=ln.match(/^To\.?\s*(.*)$/i))){toN=m[1].trim();bodyStart=i+1;continue;}
+      if(ln==='')continue;
+      if(date||fromN!==null)break;
+    }
+    if(fromN===null&&toN===null)continue;
+    const body=lines.slice(bodyStart).join('\n').trim();
+    if(!body)continue;
+    let who;
+    if(fromN)who=fromN.includes(cn)?'char':(un&&fromN.includes(un)?'user':'user');
+    else who=(toN&&toN.includes(cn))?'user':'char';
+    out.push({date,who,body});
+  }
+  // 날짜가 오름차순이 되도록 정렬(파일이 최신순이면 뒤집힌다). 같은 날 편지들은 파일 안의 상대 순서를 지킨다.
+  const asc=out.length>1&&out[0].date&&out[out.length-1].date&&out[0].date>out[out.length-1].date?out.reverse():out;
+  const seen={};
+  return asc.map(x=>{
+    const base=(x.date||new Date()).getTime();
+    const k=dayKey(base);seen[k]=(seen[k]||0)+1;
+    return{from:x.who,ts:base+seen[k]*60000,body:x.body,status:'delivered',imported:true,read:true};
+  });
+}
+async function onImportLetters(input){
+  const f=input.files[0];input.value='';if(!f)return;
+  if(!S.charName){toast('먼저 상대 이름을 적고 설정 저장을 눌러 주세요. 누가 쓴 편지인지 이름으로 구분해요.',4000);return;}
+  const text=await f.text();
+  const parsed=parseLettersTxt(text);
+  if(!parsed.length){toast('편지를 찾지 못했어요. 형식을 확인해 주세요.');return;}
+  const key=l=>fmtDate(l.ts)+'|'+l.from+'|'+l.body.slice(0,40);
+  const have=new Set(L.map(key));
+  const fresh=parsed.filter(l=>!have.has(key(l)));
+  for(const l of fresh){await dbPut('letters',l);L.push(l);}
+  sortAll();
+  const nc=fresh.filter(l=>l.from==='char').length;
+  if(!S.startDate&&L.length){S.startDate=new Date(L[0].ts).toISOString().slice(0,10);await saveS();}
+  renderAll();
+  toast(`편지 ${fresh.length}통을 불러왔어요 (${cName()} ${nc}통)`,4000);
+  setStatus('impStatus',`${fresh.length}통 추가됨${parsed.length-fresh.length?` · 중복 ${parsed.length-fresh.length}통 건너뜀`:''}\n다음 순서: ① 기억 정리하기 → ② 편지로 설정 만들기`);
+}
+
+/* ══════════════════════ 기억(요약) ══════════════════════ */
+function unsummarized(){
+  const items=[...L.filter(l=>l.status!=='pending'&&l.body).map(l=>({ts:l.ts,line:letterLine(l),len:Math.min(l.body.length,1800)})),
+               ...C.map(c=>({ts:c.ts,line:chatLine(c),len:(c.text||'').length+20}))];
+  return items.filter(i=>i.ts>(S.memUpTo||0)).sort((a,b)=>a.ts-b.ts);
+}
+// 오래된 것부터 약 12,000자씩 묶어서 하나씩 요약한다.
+function nextChunk(items){
+  const chunk=[];let n=0;
+  for(const it of items){if(chunk.length&&(n+it.len>12000||chunk.length>=30))break;chunk.push(it);n+=it.len;}
+  return chunk;
+}
+async function summarizeChunk(chunk){
+  const u=uName(),c=cName();
+  const prompt=`다음은 ${josa(c,'과/와')} ${josa(u,'이/가')} 주고받은 편지와 메신저 기록이다 (${fmtDate(chunk[0].ts)} ~ ${fmtDate(chunk[chunk.length-1].ts)}).
+나중에 ${josa(c,'이/가')} 이 시기를 정확히 기억할 수 있도록 기억 노트를 써줘.
+
+[포함할 것]
+- 일어난 사건과 만남, 약속, 날짜
+- 서로에 대해 새로 알게 된 사실 (일, 가족, 취향, 고민, 습관)
+- 감정의 흐름과 관계의 변화, 다툼과 화해
+- 새로 생긴 호칭, 별명, 둘만의 농담이나 표현
+
+[형식]
+- 한국어, '- '로 시작하는 짧은 문장 8~15개
+- 날짜는 알 수 있으면 함께 적기
+- 추측은 하지 말고 기록에 있는 것만
+
+[기록]
+${chunk.map(x=>x.line).join('\n\n')}`;
+  return (await callLLM({sys:'너는 두 사람의 기록을 꼼꼼하게 정리하는 기록 담당자다.',messages:[{role:'user',content:prompt}],maxTokens:1500,temperature:0.3})).trim();
+}
+async function rollupIfLong(){
+  // 기억이 너무 길어지면(프롬프트 비용) 가장 오래된 기억 4개를 하나로 합친다.
+  while(M.reduce((n,m)=>n+m.content.length,0)>20000&&M.length>=4){
+    const old=M.slice(0,4);
+    const prompt=`다음은 시간 순서대로 정리된 기억 노트들이다. 중요한 사건, 사실, 호칭, 관계 변화는 남기고 자잘한 내용은 줄여서 하나의 기억 노트로 합쳐줘. '- '로 시작하는 문장 12~18개, 날짜 유지.\n\n`+old.map(m=>`[${fmtDate(m.fromTs)} ~ ${fmtDate(m.toTs)}]\n${m.content}`).join('\n\n');
+    const content=(await callLLM({sys:'너는 기록을 압축하는 기록 담당자다.',messages:[{role:'user',content:prompt}],maxTokens:2000,temperature:0.3})).trim();
+    if(!content)break;
+    const merged={fromTs:old[0].fromTs,toTs:old[old.length-1].toTs,content,createdAt:Date.now(),merged:true};
+    await dbPut('mems',merged);
+    for(const m of old)await dbDel('mems',m.id);
+    M=[merged,...M.slice(4)];sortAll();
+  }
+}
+async function runMemory(all){
+  if(memBusy){toast('이미 기억을 정리하는 중이에요');return;}
+  memBusy=true;
+  try{
+    let items=unsummarized();
+    const total=items.length;
+    if(!total){setStatus('memStatus','새로 정리할 기록이 없어요.');return;}
+    let done=0;
+    while(items.length){
+      if(!all&&items.length<20)break; // 자동 정리는 기록이 충분히 쌓였을 때만
+      const chunk=nextChunk(items);
+      setStatus('memStatus',`기억 정리 중… ${done}/${total}`);
+      const content=await summarizeChunk(chunk);
+      if(!content)throw new Error('요약 결과가 비어 있어요');
+      const m={fromTs:chunk[0].ts,toTs:chunk[chunk.length-1].ts,content,createdAt:Date.now()};
+      await dbPut('mems',m);M.push(m);
+      S.memUpTo=chunk[chunk.length-1].ts;await saveS();
+      done+=chunk.length;items=items.slice(chunk.length);
+      if(!all)break;
+    }
+    setStatus('memStatus','기억을 합치는 중…');
+    await rollupIfLong();
+    if(curTab==='us')renderUs();
+    setStatus('memStatus',`정리 완료 · 기억 노트 ${M.length}개`);
+  }catch(e){
+    setStatus('memStatus','중단됨: '+(e.message||e)+'\n다시 누르면 이어서 정리해요.');
+  }finally{memBusy=false;}
+}
+function maybeAutoMemory(){if(unsummarized().length>=40)runMemory(false);}
+function setStatus(id,t){const el=$(id);if(el)el.textContent=t;}
+
+async function genSheet(){
+  const chars=L.filter(l=>l.from==='char'&&l.body&&l.status!=='pending');
+  if(!chars.length){toast('먼저 편지를 불러와 주세요');return;}
+  setStatus('sheetStatus','편지를 읽고 설정을 만드는 중…');
+  try{
+    // 처음부터 최근까지 고르게 18통을 뽑는다. 최근 편지일수록 지금 말투에 가까우니 뒤쪽을 조금 더 뽑는다.
+    const pick=[];const n=chars.length;
+    for(let i=0;i<12;i++)pick.push(chars[Math.floor(i*(n*0.7)/12)]);
+    for(let i=0;i<6;i++)pick.push(chars[Math.floor(n*0.7+i*(n*0.3)/6)]);
+    const sample=[...new Set(pick.filter(Boolean))];
+    const c=S.charFull||cName(),u=uName();
+    const prompt=`아래는 ${josa(c,'이/가')} ${u}에게 보낸 실제 편지들과, 둘의 기억 노트다. 이걸 바탕으로 ${josa(c,'을/를')} 연기하기 위한 캐릭터 설정서를 써줘.
+
+[형식 — 이 제목들을 그대로 사용]
+[기본 정보] 이름, 나이대, 직업과 현재 상황, 사는 곳 등 기록에서 확인되는 것만
+[성격] 5~8개
+[${u}와의 관계] 지금 어떤 사이인지, 관계가 어떻게 깊어졌는지 3~5줄
+[말투와 호칭] ${josa(u,'을/를')} 부르는 호칭, 스스로를 칭하는 말, 자주 쓰는 어미·표현·감탄사, 이모지 습관 (실제 예문 포함)
+[편지 문체] 길이, 문단 구성, 시작과 끝맺음 방식, 자주 쓰는 비유
+[메신저 문체] 편지와 달리 짧고 일상적인 말투 예시 5개
+[절대 하지 않는 것] 3~5개
+
+${M.length?`[기억 노트]\n${memText().slice(0,8000)}\n\n`:''}[편지 샘플]
+${sample.map(l=>`(${fmtDate(l.ts)})\n${l.body.slice(0,900)}`).join('\n\n---\n\n')}`;
+    const out=(await callLLM({sys:'너는 캐릭터 분석가다. 기록에 근거해서만 쓴다.',messages:[{role:'user',content:prompt}],maxTokens:3000,temperature:0.4})).trim();
+    if(!out)throw new Error('결과가 비어 있어요');
+    S.charSheet=out;await saveS();
+    renderSettings();
+    setStatus('sheetStatus','설정을 만들었어요. 아래에서 직접 고칠 수도 있어요.');
+  }catch(e){setStatus('sheetStatus','실패: '+(e.message||e));}
+}
+
+/* ══════════════════════ 메신저 ══════════════════════ */
+function openChat(){
+  setAvatar($('chatAv'),S.charAvatar,cName());
+  $('chatName').textContent=S.charFull||cName();
+  renderChat();show('v-chat');scrollChat();
+}
+function closeChat(){setTab(curTab);}
+function scrollChat(){const s=$('chatScroll');requestAnimationFrame(()=>{s.scrollTop=s.scrollHeight;});}
+function photoSrc(id){const p=P.find(x=>x.id===id);return p?p.data:'';}
+function renderChat(){
+  const out=[];let lastDay='';
+  const recent=C.slice(-300);
+  recent.forEach((c,i)=>{
+    const dk=dayKey(c.ts);
+    if(dk!==lastDay){lastDay=dk;const d=new Date(c.ts);out.push(`<div class="dsep">${d.getFullYear()}년 ${d.getMonth()+1}월 ${d.getDate()}일</div>`);}
+    const next=recent[i+1];
+    const lastOfGroup=!next||next.from!==c.from||dayKey(next.ts)!==dk||Math.floor(next.ts/60000)!==Math.floor(c.ts/60000);
+    const me=c.from==='user';
+    let bub;
+    if(c.photoId)bub=`<div class="bub img"><img src="${photoSrc(c.photoId)}" onclick="viewImg(this.src)" alt=""></div>`;
+    else if(c.img){
+      // 사진과 글을 같이 보낸 메시지는 사진 말풍선과 글 말풍선 두 줄로 나눠 그린다.
+      if(c.text)out.push(`<div class="mrow me"><div class="bub img"><img src="${c.img}" onclick="viewImg(this.src)" alt=""></div></div>`);
+      bub=c.text?`<div class="bub">${esc(c.text)}</div>`:`<div class="bub img"><img src="${c.img}" onclick="viewImg(this.src)" alt=""></div>`;
+    }
+    else bub=`<div class="bub">${esc(c.text)}</div>`;
+    const t=lastOfGroup?`<span class="mt">${fmtTimeKo(c.ts)}</span>`:'';
+    if(me)out.push(`<div class="mrow me" oncontextmenu="chatMsgMenu(event,${c.id})">${t}${bub}</div>`);
+    else out.push(`<div class="mrow" oncontextmenu="chatMsgMenu(event,${c.id})">${lastOfGroup?avatarHTML(S.charAvatar,cName(),42).replace('class="avatar"','class="avatar av"'):'<span class="avsp"></span>'}${bub}${t}</div>`);
+  });
+  if(chatBusy)out.push(`<div class="mrow">${avatarHTML(S.charAvatar,cName(),42).replace('class="avatar"','class="avatar av"')}<div class="bub typing"><span></span><span></span><span></span></div></div>`);
+  if(!C.length&&!chatBusy)out.push(`<div class="dsep" style="margin-top:40px">${esc(josa(nick(cName()),'과/와'))}의 대화를 시작해 보세요</div>`);
+  $('chatlist').innerHTML=out.join('');
+}
+function onChatInput(){
+  const t=$('chatInput');t.style.height='auto';t.style.height=Math.min(120,t.scrollHeight)+'px';
+  const has=!!t.value.trim()||!!pendingChatImg;
+  $('chatSendBtn').classList.toggle('hide',!has);$('chatImgBtn').classList.toggle('hide',has);
+}
+function onChatKey(e){
+  // 컴퓨터에서는 Enter로 전송, Shift+Enter는 줄바꿈. 폰 키보드는 줄바꿈 그대로.
+  if(e.key==='Enter'&&!e.shiftKey&&!e.isComposing&&matchMedia('(pointer:fine)').matches){e.preventDefault();sendChat();}
+}
+async function onChatImg(input){
+  const f=input.files[0];input.value='';if(!f)return;
+  pendingChatImg=await resizeImg(f,1280,0.85);
+  $('pendImg').innerHTML=`<img src="${pendingChatImg}" alt=""><button class="ghost" style="padding:4px 10px" onclick="pendingChatImg=null;$('pendImg').classList.add('hide');onChatInput()">취소</button>`;
+  $('pendImg').classList.remove('hide');onChatInput();
+}
+async function sendChat(){
+  const t=$('chatInput');const text=t.value.trim();
+  if(!text&&!pendingChatImg)return;
+  const m={from:'user',ts:Date.now(),text};
+  if(pendingChatImg){m.img=pendingChatImg;pendingChatImg=null;$('pendImg').classList.add('hide');}
+  await dbPut('chats',m);C.push(m);
+  t.value='';onChatInput();renderChat();scrollChat();
+  // 연달아 보내는 메시지를 한 번에 읽고 답하도록 잠깐 기다린다.
+  clearTimeout(chatTimer);
+  chatTimer=setTimeout(genChatReply,2500);
+}
+function chatApiMessages(){
+  const recent=C.slice(-40);
+  const arr=[];
+  for(const c of recent){
+    const role=c.from==='char'?'assistant':'user';
+    let content;
+    if(c.photoId){const ph=P.find(p=>p.id===c.photoId);content='[사진: '+(ph&&ph.tags||'사진')+']';}
+    else content=(c.img?'(사진을 보냄) ':'')+(c.text||'');
+    const last=arr[arr.length-1];
+    if(last&&last.role===role){last.content+='\n'+content;last._src.push(c);}
+    else arr.push({role,content,_src:[c]});
+  }
+  while(arr.length&&arr[0].role!=='user')arr.shift();
+  if(!arr.length)return[];
+  // 마지막 사용자 차례에 보낸 사진은 실제 이미지로 같이 보낸다(최대 2장).
+  const tail=arr[arr.length-1];
+  if(tail.role==='user'){
+    const imgs=tail._src.filter(c=>c.img).slice(-2).map(c=>{const m=c.img.match(/^data:([^;]+);base64,(.*)$/);return m?{mime:m[1],b64:m[2]}:null;}).filter(Boolean);
+    if(imgs.length)tail.imgs=imgs;
+  }
+  return arr.map(({role,content,imgs})=>imgs?{role,content,imgs}:{role,content});
+}
+function pickPhoto(kw){
+  if(!P.length)return null;
+  const words=(kw||'').split(/[\s,·]+/).filter(w=>w.length>=1);
+  const score=p=>words.reduce((n,w)=>n+((p.tags||'').includes(w)?1:0),0);
+  const unsent=P.filter(p=>!p.sentAt);
+  const pool=unsent.length?unsent:P;
+  let best=[],bs=-1;
+  for(const p of pool){const s=score(p);if(s>bs){bs=s;best=[p];}else if(s===bs)best.push(p);}
+  return best[Math.floor(Math.random()*best.length)];
+}
+function splitChat(text){
+  text=(text||'').replace(/```[a-z]*\n?|```/g,'').trim();
+  const out=[];
+  for(let ln of text.split('\n')){
+    ln=ln.trim();if(!ln)continue;
+    const pm=ln.match(/^\[(?:사진|photo)\s*[:：]?\s*(.*?)\]$/i);
+    if(pm){out.push({photo:pm[1]});continue;}
+    ln=ln.replace(new RegExp('^'+cName()+'\\s*[:：]\\s*'),'').replace(/^\*[^*]+\*\s*/,'').trim();
+    if(ln)out.push({text:ln});
+  }
+  return out.slice(0,6);
+}
+async function genChatReply(){
+  if(chatBusy){chatTimer=setTimeout(genChatReply,1500);return;}
+  const msgs=chatApiMessages();
+  if(!msgs.length||msgs[msgs.length-1].role!=='user')return;
+  chatBusy=true;renderChat();scrollChat();
+  const startedAt=Date.now();
+  try{
+    const out=await callLLM({sys:buildSys('chat'),messages:msgs,maxTokens:800});
+    const parts=splitChat(out);
+    if(!parts.length)throw new Error('빈 답장이 왔어요');
+    for(let i=0;i<parts.length;i++){
+      const p=parts[i];
+      await sleep(i===0?300:Math.min(2400,600+(p.text||'').length*45));
+      const m={from:'char',ts:Date.now()};
+      if(p.photo!==undefined){const ph=pickPhoto(p.photo);if(!ph)continue;m.photoId=ph.id;if(!ph.sentAt){ph.sentAt=Date.now();await dbPut('photos',ph);}}
+      else m.text=p.text;
+      await dbPut('chats',m);C.push(m);
+      if(i===parts.length-1)chatBusy=false;
+      renderChat();scrollChat();
+    }
+    if(document.hidden)notify(cName(),parts.map(p=>p.text||'(사진)').join(' ').slice(0,80));
+  }catch(e){
+    toast(e.message||String(e),4500);
+  }finally{
+    chatBusy=false;renderChat();scrollChat();
+    // 답장 만드는 사이 새 메시지가 왔으면 거기에도 답한다.
+    if(C.some(c=>c.from==='user'&&c.ts>startedAt)){clearTimeout(chatTimer);chatTimer=setTimeout(genChatReply,1500);}
+    maybeAutoMemory();
+  }
+}
+function chatMenu(){
+  openSheet([
+    ['이미지 목록',()=>{renderPhotoGrid();show('v-photos');}],
+    ['편지함으로',()=>closeChat()],
+  ]);
+}
+function chatMsgMenu(e,id){
+  e.preventDefault();
+  openSheet([['이 메시지 삭제',async()=>{await dbDel('chats',id);C=C.filter(c=>c.id!==id);renderChat();},true]]);
+}
+function renderPhotoGrid(){
+  const sent=P.filter(p=>p.sentAt).sort((a,b)=>b.sentAt-a.sentAt);
+  $('photoGrid').innerHTML=sent.length?sent.map(p=>`<img src="${p.data}" onclick="viewImg(this.src)" alt="">`).join(''):`<div class="dsep" style="grid-column:1/-1;margin-top:40px">아직 받은 사진이 없어요</div>`;
+}
+function viewImg(src){$('viewerImg').src=src;$('viewer').style.display='flex';}
+
+/* ══════════════════════ 앨범 / 우리 ══════════════════════ */
+function renderAlbum(){
+  if(!S)return;
+  const sent=P.filter(p=>p.sentAt).sort((a,b)=>b.sentAt-a.sentAt);
+  if(!sent.length){
+    $('albumBody').innerHTML=`<div class="empty">아직 받은 사진이 없어요.<br>전체 탭의 <b>사진 보관함</b>에 ${esc(josa(nick(cName()),'의/의'))} 사진을 넣어두면,<br>메신저에서 대화하다가 ${esc(josa(nick(cName()),'가/가'))} 보내줘요.</div>`;
+    return;
+  }
+  $('albumBody').innerHTML=`<div class="polas">${sent.map(p=>`<div class="pola" onclick="viewImg(this.querySelector('img').src)"><img src="${p.data}" alt=""><div class="cap">${esc(p.tags||fmtDate(p.sentAt))}</div></div>`).join('')}</div>`;
+}
+function renderUs(){
+  if(!S)return;
+  const c=cName(),u=uName();
+  const letters=L.filter(l=>l.status!=='pending');
+  const mems=M.slice().reverse().map(m=>`<div class="memcard" id="mem-${m.id}"><div class="md"><span>${fmtDate(m.fromTs)} ~ ${fmtDate(m.toTs)}</span><span><button onclick="editMem(${m.id})" style="color:var(--ink2);font-size:12.5px">수정</button> · <button onclick="delMem(${m.id})" class="danger" style="font-size:12.5px">삭제</button></span></div><div class="mt">${esc(m.content)}</div></div>`).join('');
+  $('usBody').innerHTML=`<div class="ushead"><div class="ttl2 hand">${esc(nick(c))}와의 사이</div>
+    <div class="row" style="align-items:center"><div><span class="chip">D+${dPlus()}</span><div style="color:var(--ink2);font-size:14px;margin-top:8px">${esc(josa(c,'과/와'))} ${esc(u)}는</div><div style="font-size:28px;font-weight:700">${fmtDate(startTs())}부터</div></div>
+    <div style="flex:0 0 auto;display:flex">${avatarHTML(S.charAvatar,c,72)}<span style="margin-left:-14px">${avatarHTML(S.userAvatar,u,72)}</span></div></div>
+    <div class="stats"><div class="stat"><b>${letters.filter(l=>l.from==='char').length}</b><span>받은 편지</span></div><div class="stat"><b>${letters.filter(l=>l.from==='user').length}</b><span>보낸 편지</span></div><div class="stat"><b>${C.length}</b><span>메시지</span></div></div></div>
+    <div class="sec"><span>${esc(josa(nick(c),'가/가'))} 기억하는 우리</span><button class="ghost" style="font-size:13px;padding:6px 12px" onclick="runMemory(true)">기억 정리하기</button></div>
+    <div class="prog" id="memStatus" style="padding:0 20px">${unsummarized().length?`아직 정리 안 된 기록 ${unsummarized().length}개`:''}</div>
+    ${mems||`<div class="empty" style="padding:30px">아직 기억 노트가 없어요.<br>편지를 불러온 뒤 <b>기억 정리하기</b>를 눌러 주세요.</div>`}
+    <div style="height:120px"></div>`;
+}
+function editMem(id){
+  const m=M.find(x=>x.id===id);if(!m)return;
+  const el=$('mem-'+id);
+  el.querySelector('.mt').outerHTML=`<textarea id="memEdit-${id}">${esc(m.content)}</textarea><div class="row" style="margin-top:8px"><button class="ghost" onclick="renderUs()">취소</button><button class="primary" onclick="saveMem(${id})">저장</button></div>`;
+}
+async function saveMem(id){const m=M.find(x=>x.id===id);m.content=$('memEdit-'+id).value.trim();await dbPut('mems',m);renderUs();toast('저장했어요');}
+async function delMem(id){if(!confirm('이 기억 노트를 지울까요?'))return;await dbDel('mems',id);M=M.filter(x=>x.id!==id);renderUs();}
+
+/* ══════════════════════ 전체(설정) ══════════════════════ */
+function renderSettings(){
+  if(!S)return;
+  const p=S.provider;
+  const welcome=(!S.userName||!S.charName||!(PROVIDERS[p].noKey||S.keys[p]))?`<div class="card" style="background:#f1efff;border-color:#e2ddff"><h3>처음 오셨네요 👋</h3><div class="hint" style="color:#555">① 내 이름과 상대 이름 입력 → ② AI 연결(API 키) → ③ 저장<br>예전 편지가 있으면 아래 <b>데이터</b>에서 txt를 불러오세요.</div></div>`:'';
+  $('setBody').innerHTML=`${welcome}
+  <div class="card"><h3>프로필</h3>
+    <div class="avrow">
+      <div class="avpick" onclick="pickAvatar('userAvatar')">${avatarHTML(S.userAvatar,uName(),72)}<span>내 사진</span></div>
+      <div class="avpick" onclick="pickAvatar('charAvatar')">${avatarHTML(S.charAvatar,cName(),72)}<span>${esc(cName())} 사진</span></div>
+    </div>
+    <div class="row"><div class="field"><label>내 이름</label><input type="text" id="s-userName" value="${esc(S.userName)}" placeholder="편지에서 불리는 이름"></div>
+    <div class="field"><label>상대 이름 (짧게)</label><input type="text" id="s-charName" value="${esc(S.charName)}" placeholder="편지에 적힌 이름"></div></div>
+    <div class="row"><div class="field"><label>상대 전체 이름</label><input type="text" id="s-charFull" value="${esc(S.charFull)}" placeholder="성까지 포함한 이름"></div>
+    <div class="field"><label>처음 만난 날</label><input type="date" id="s-startDate" value="${esc(S.startDate)}"></div></div>
+  </div>
+  <div class="card"><h3>AI 연결</h3>
+    <div class="field"><label>사용할 AI</label><select id="s-provider" onchange="onProvChange()">${Object.entries(PROVIDERS).map(([k,v])=>`<option value="${k}"${k===p?' selected':''}>${v.label}</option>`).join('')}</select></div>
+    <div id="provFields"></div>
+  </div>
+  <div class="card"><h3>편지</h3>
+    <div class="row"><div class="field"><label>답장 최소 (분)</label><input type="number" id="s-minDelay" min="0" step="0.5" value="${S.minDelay}"></div>
+    <div class="field"><label>답장 최대 (분)</label><input type="number" id="s-maxDelay" min="0" step="0.5" value="${S.maxDelay}"></div></div>
+    <div class="hint" style="margin:-4px 0 10px">편지를 보내면 이 시간 사이 랜덤한 때에 답장이 와요.</div>
+    <label class="toggle"><span>${esc(josa(nick(cName()),'가/가'))} 하루 한 번 먼저 편지 보내기</span><input type="checkbox" id="s-spontaneous"${S.spontaneous?' checked':''}></label>
+    <div class="row"><div class="field"><label>시작 (시)</label><input type="number" id="s-spontFrom" min="0" max="23" value="${S.spontFrom}"></div>
+    <div class="field"><label>끝 (시)</label><input type="number" id="s-spontTo" min="1" max="24" value="${S.spontTo}"></div></div>
+    <div class="hint">매일 이 시간대 안의 랜덤한 시각에 먼저 편지가 와요. 그 시각에 앱이 닫혀 있었다면, 그날 앱을 열 때 그 시각으로 도착해요.</div>
+  </div>
+  <button class="primary" style="width:100%;margin-bottom:14px;padding:14px" onclick="saveSettings()">설정 저장</button>
+  <div class="card"><h3>${esc(cName())} 캐릭터 설정</h3>
+    <div class="hint" style="margin-bottom:8px">AI가 ${esc(josa(cName(),'으로/로'))} 말할 때 기준이 되는 설정이에요. 편지를 불러왔다면 버튼 하나로 자동으로 만들 수 있어요.</div>
+    <button class="ghost" style="width:100%" onclick="genSheet()">편지로 설정 만들기</button>
+    <div class="prog" id="sheetStatus"></div>
+    <div class="field"><textarea id="s-charSheet">${esc(S.charSheet)}</textarea></div>
+    <button class="primary" style="width:100%" onclick="saveSettings()">설정 저장</button>
+  </div>
+  <div class="card"><h3>사진 보관함 (${P.length})</h3>
+    <div class="hint">${esc(josa(nick(cName()),'가/가'))} 메신저에서 보낼 사진들이에요. 사진마다 상황을 짧게 적어두면 (예: 차 안 셀카, 잠옷, 카페) 대화에 맞는 사진을 골라 보내요.</div>
+    <button class="ghost" style="width:100%;margin-top:10px" onclick="$('filePhotos').click()">사진 추가</button>
+    <div class="phgrid">${P.map(ph=>`<div class="ph"><img src="${ph.data}" alt="">${ph.sentAt?'<span class="sent">받음</span>':''}<button class="x" onclick="delPhoto(${ph.id})">×</button><input type="text" value="${esc(ph.tags||'')}" placeholder="상황 설명" onchange="setPhotoTag(${ph.id},this.value)"></div>`).join('')}</div>
+  </div>
+  <div class="card"><h3>데이터</h3>
+    <button class="ghost" style="width:100%;margin-bottom:8px" onclick="$('fileLetters').click()">편지 txt 불러오기</button>
+    <div class="hint">날짜 / From. 이름 / To. 이름 / 본문 순서로 적고 편지 사이를 --- 로 나눈 파일이에요. 불러온 편지는 이 기기 브라우저에만 저장돼요.</div>
+    <div class="prog" id="impStatus"></div>
+    <div class="row" style="margin-top:10px"><button class="ghost" onclick="exportBackup()">백업 저장</button><button class="ghost" onclick="$('fileBackup').click()">백업 불러오기</button></div>
+    <div class="hint">백업 파일에는 API 키가 들어가지 않아요. 폰을 바꾸거나 브라우저 데이터를 지우기 전에 꼭 백업하세요.</div>
+    <button class="ghost" style="width:100%;margin-top:10px" onclick="askNotify()">알림 허용</button>
+    <button class="ghost danger" style="width:100%;margin-top:10px" onclick="wipeAll()">모든 데이터 삭제</button>
+  </div>`;
+  onProvChange(true);
+}
+function onProvChange(init){
+  const p=init?S.provider:$('s-provider').value;
+  const cfg=PROVIDERS[p];
+  let h='';
+  if(!cfg.noKey)h+=`<div class="field"><label>${cfg.label} API 키</label><input type="password" id="s-key" value="${esc(S.keys[p]||'')}" placeholder="키를 붙여넣기" autocomplete="off"></div>`;
+  if(p==='local')h+=`<div class="field"><label>주소</label><input type="text" id="s-localUrl" value="${esc(S.localUrl)}"></div><div class="hint">집 PC에서 Ollama를 켜고, 같은 PC의 브라우저로 이 앱을 열었을 때 쓸 수 있어요. 나중에 직접 학습시킨 모델로 바꿀 때 쓰는 자리예요.</div>`;
+  h+=`<div class="field"><label>모델</label><input type="text" id="s-model" value="${esc(S.models[p]||cfg.defaultModel)}" placeholder="${p==='local'?'예: ian-8b':''}"></div>`;
+  h+=`<button class="ghost" style="width:100%" onclick="testAI()">연결 테스트</button><div class="prog" id="aiStatus"></div>`;
+  $('provFields').innerHTML=h;
+}
+function readSettingsForm(){
+  const v=id=>{const el=$(id);return el?el.value:undefined;};
+  S.userName=(v('s-userName')||'').trim();
+  S.charName=(v('s-charName')||'').trim();
+  S.charFull=(v('s-charFull')||'').trim()||S.charName;
+  S.startDate=v('s-startDate')||'';
+  const p=v('s-provider');S.provider=p;
+  if($('s-key'))S.keys[p]=$('s-key').value.trim();
+  if($('s-model'))S.models[p]=$('s-model').value.trim();
+  if($('s-localUrl'))S.localUrl=$('s-localUrl').value.trim();
+  S.minDelay=Math.max(0,parseFloat(v('s-minDelay'))||0);
+  S.maxDelay=Math.max(S.minDelay,parseFloat(v('s-maxDelay'))||0);
+  S.spontaneous=$('s-spontaneous').checked;
+  S.spontFrom=Math.min(23,Math.max(0,parseInt(v('s-spontFrom'))||0));
+  S.spontTo=Math.min(24,Math.max(S.spontFrom+1,parseInt(v('s-spontTo'))||0));
+  S.charSheet=v('s-charSheet')||DEFAULT_SHEET;
+}
+async function saveSettings(){readSettingsForm();await saveS();renderAll();toast('저장했어요');}
+async function testAI(){
+  readSettingsForm();
+  setStatus('aiStatus','연결하는 중…');
+  try{
+    const out=await callLLM({sys:'짧게 답해.',messages:[{role:'user',content:'"연결 성공"이라고만 답해줘.'}],maxTokens:50,temperature:0});
+    await saveS();
+    setStatus('aiStatus','✓ '+(out.trim().slice(0,40)||'응답 받음'));
+  }catch(e){setStatus('aiStatus','✗ '+(e.message||e));}
+}
+let _avatarTarget=null;
+function pickAvatar(k){_avatarTarget=k;$('fileAvatar').click();}
+async function onAvatar(input){
+  const f=input.files[0];input.value='';if(!f||!_avatarTarget)return;
+  readSettingsForm();
+  S[_avatarTarget]=await resizeImg(f,320,0.85);await saveS();renderAll();
+}
+async function onAddPhotos(input){
+  const files=[...input.files];input.value='';
+  for(const f of files){const data=await resizeImg(f,1280,0.85);const ph={data,tags:'',addedAt:Date.now()};await dbPut('photos',ph);P.push(ph);}
+  renderSettings();toast(`사진 ${files.length}장을 넣었어요`);
+}
+async function setPhotoTag(id,v){const ph=P.find(x=>x.id===id);ph.tags=v.trim();await dbPut('photos',ph);}
+async function delPhoto(id){if(!confirm('이 사진을 지울까요? 메신저에서 보낸 기록도 사진 없이 남아요.'))return;await dbDel('photos',id);P=P.filter(x=>x.id!==id);renderSettings();}
+function resizeImg(file,maxDim,q){
+  return new Promise((res,rej)=>{
+    const img=new Image(),url=URL.createObjectURL(file);
+    img.onload=()=>{
+      let{width:w,height:h}=img;const s=Math.min(1,maxDim/Math.max(w,h));w=Math.round(w*s);h=Math.round(h*s);
+      const cv=document.createElement('canvas');cv.width=w;cv.height=h;cv.getContext('2d').drawImage(img,0,0,w,h);
+      URL.revokeObjectURL(url);res(cv.toDataURL('image/jpeg',q));
+    };
+    img.onerror=()=>{URL.revokeObjectURL(url);rej(new Error('이미지를 읽지 못했어요'));};
+    img.src=url;
+  });
+}
+async function askNotify(){
+  if(!('Notification' in window)){toast('이 브라우저는 알림을 지원하지 않아요');return;}
+  const r=await Notification.requestPermission();
+  toast(r==='granted'?'알림을 켰어요. 앱이 열려 있을 때 도착하면 알려줘요':'알림이 허용되지 않았어요');
+}
+async function exportBackup(){
+  const s=Object.assign({},S,{keys:{}});
+  const data={app:'letters',version:1,exportedAt:Date.now(),S:s,letters:L,chats:C,photos:P,mems:M};
+  const blob=new Blob([JSON.stringify(data)],{type:'application/json'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=`letters-backup-${fmtDate(Date.now()).replace(/\./g,'')}.json`;
+  document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),5000);
+}
+async function onImportBackup(input){
+  const f=input.files[0];input.value='';if(!f)return;
+  let d;try{d=JSON.parse(await f.text());}catch(e){toast('백업 파일을 읽지 못했어요');return;}
+  if(d.app!=='letters'){toast('이 앱의 백업 파일이 아니에요');return;}
+  if(!confirm('지금 데이터를 모두 지우고 백업으로 바꿀까요? (API 키는 유지돼요)'))return;
+  const keys=S.keys;
+  for(const s of ['letters','chats','photos','mems'])await dbClear(s);
+  S=Object.assign({},DEF,d.S||{},{keys});await saveS();
+  for(const [s,arr] of [['letters',d.letters],['chats',d.chats],['photos',d.photos],['mems',d.mems]])for(const x of arr||[])await dbPut(s,x);
+  [L,C,P,M]=await Promise.all(['letters','chats','photos','mems'].map(dbAll));sortAll();renderAll();toast('백업을 불러왔어요');
+}
+async function wipeAll(){
+  if(!confirm('편지, 메시지, 사진, 기억, 설정이 모두 지워져요. 정말 삭제할까요?'))return;
+  if(!confirm('되돌릴 수 없어요. 마지막으로 확인할게요.'))return;
+  for(const s of ['kv','letters','chats','photos','mems'])await dbClear(s);
+  S=Object.assign({},DEF);L=[];C=[];P=[];M=[];renderAll();toast('모두 삭제했어요');
+}
+
+/* ══════════════════════ 시트 ══════════════════════ */
+function openSheet(items){
+  $('sheet').innerHTML=items.map((it,i)=>`<button data-i="${i}"${it[2]?' class="danger"':''}>${esc(it[0])}</button>`).join('')+`<button onclick="closeSheet()" style="color:#999">닫기</button>`;
+  $('sheet').querySelectorAll('button[data-i]').forEach(b=>b.onclick=()=>{closeSheet();items[+b.dataset.i][1]();});
+  $('sheetBg').style.display='flex';
+}
+function closeSheet(){$('sheetBg').style.display='none';}
+
+/* ══════════════════════ 시작 ══════════════════════ */
+boot().catch(e=>{document.body.innerHTML='<div style="padding:30px;font-family:sans-serif">앱을 열지 못했어요: '+esc(e.message||e)+'</div>';});
+if('serviceWorker' in navigator){window.addEventListener('load',()=>{navigator.serviceWorker.register('sw.js').catch(()=>{});});}
+</script>
+</body>
+</html>
