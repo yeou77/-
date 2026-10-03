@@ -276,10 +276,9 @@ const PROVIDERS={
   openai:{label:'ChatGPT',kind:'openai',baseUrl:'https://api.openai.com/v1',defaultModel:'gpt-4o'},
   local:{label:'로컬 모델 (Ollama)',kind:'openai',defaultModel:'',noKey:true},
 };
-// 레포가 공개라서 실제 대화 내용은 여기 넣지 않는다. 자세한 설정은 앱에서 편지를 불러온 뒤 "편지로 설정 만들기"로 채운다.
+// 레포가 공개라서 실제 인물·대화 내용은 여기 넣지 않는다. 이름과 설정은 모두 앱 안에서 입력한다. 자세한 설정은 앱에서 편지를 불러온 뒤 "편지로 설정 만들기"로 채운다.
 const DEFAULT_SHEET=`[기본 정보]
-- 이름: 김이안
-- 서울에서 연기자를 꿈꾸며 지내다 배우로 활동 중인 청년
+- 이름, 나이, 하는 일, 사는 곳
 
 [성격]
 - 다정하고 애정 표현을 아끼지 않음
@@ -292,7 +291,7 @@ const DEFAULT_SHEET=`[기본 정보]
 ※ 편지를 불러온 뒤 '편지로 설정 만들기'를 누르면 실제 편지를 바탕으로 이 설정이 자세하게 채워져요.`;
 const DEF={
   provider:'claude',keys:{},models:{},localUrl:'http://localhost:11434/v1',
-  userName:'',charName:'이안',charFull:'김이안',charSheet:DEFAULT_SHEET,
+  userName:'',charName:'',charFull:'',charSheet:DEFAULT_SHEET,
   startDate:'',userAvatar:'',charAvatar:'',
   minDelay:1,maxDelay:5,spontaneous:true,spontFrom:19,spontTo:20,lastSpontDay:'',memUpTo:0,
 };
@@ -308,9 +307,9 @@ const sleep=ms=>new Promise(r=>setTimeout(r,ms));
 function esc(s){const d=document.createElement('div');d.textContent=s==null?'':String(s);return d.innerHTML;}
 function hasBatchim(w){if(!w)return false;const c=w.charCodeAt(w.length-1);return c>=0xAC00&&c<=0xD7A3&&(c-0xAC00)%28>0;}
 function josa(w,pair){const[a,b]=pair.split('/');return w+(hasBatchim(w)?a:b);}
-function nick(w){return hasBatchim(w)?w+'이':w;}             // 이안 → 이안이
+function nick(w){return hasBatchim(w)?w+'이':w;}             // 받침 있는 이름 뒤에 '이' (예: 지안 → 지안이)
 function uName(){return S.userName||'나';}
-function cName(){return S.charName||'이안';}
+function cName(){return S.charName||'상대';}
 function pad(n){return String(n).padStart(2,'0');}
 function fmtDate(ts){const d=new Date(ts);return d.getFullYear()+'.'+pad(d.getMonth()+1)+'.'+pad(d.getDate());}
 function fmtTimeEn(ts){return new Date(ts).toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'});}
@@ -369,7 +368,7 @@ async function boot(){
   [L,C,P,M]=await Promise.all(['letters','chats','photos','mems'].map(dbAll));
   sortAll();
   renderAll();
-  if(!S.userName||!(PROVIDERS[S.provider].noKey||S.keys[S.provider]))setTab('settings');
+  if(!S.userName||!S.charName||!(PROVIDERS[S.provider].noKey||S.keys[S.provider]))setTab('settings');
   // 답장 생성이 끊긴 채로 앱이 닫혔던 편지가 있으면 이어서 쓰게 한다.
   tick();
   setInterval(tick,5000);
@@ -647,7 +646,7 @@ async function tick(){
     notify(msg,delivered.body.slice(0,80));
     maybeAutoMemory();
   }else if(curTab==='inbox'&&L.some(l=>l.status==='pending'))renderInbox();
-  // 먼저 보내는 편지: 하루 한 번, 정해둔 시간대(기본 저녁 7~8시) 안의 랜덤한 시각에 이안이가 먼저 쓴다.
+  // 먼저 보내는 편지: 하루 한 번, 정해둔 시간대(기본 저녁 7~8시) 안의 랜덤한 시각에 상대가 먼저 쓴다.
   // 그 시각에 앱이 닫혀 있었다면 그날 안에 앱을 열 때 그 시각으로 도착한다. 지나간 날은 몰아서 보내지 않는다.
   const today=dayKey(now);
   if(S.spontaneous&&S.userName&&hasKey()&&S.lastSpontDay!==today&&!L.some(l=>l.status==='pending')){
@@ -692,7 +691,7 @@ function parseLettersTxt(text){
       const ln=lines[i].trim();
       let m;
       if(!date&&(m=ln.match(/^(\d{4})[.\-\/]\s*(\d{1,2})[.\-\/]\s*(\d{1,2})/))){date=new Date(+m[1],+m[2]-1,+m[3],12,0,0);bodyStart=i+1;continue;}
-      if(fromN===null&&(m=ln.match(/^From\.?\s*(.*)$/i)||ln.match(/^(\S+)\s+From\.?$/i))){fromN=m[1].trim();bodyStart=i+1;continue;}  // "이안 From." 처럼 뒤바뀐 것도
+      if(fromN===null&&(m=ln.match(/^From\.?\s*(.*)$/i)||ln.match(/^(\S+)\s+From\.?$/i))){fromN=m[1].trim();bodyStart=i+1;continue;}  // "이름 From." 처럼 뒤바뀐 것도
       if(toN===null&&(m=ln.match(/^To\.?\s*(.*)$/i))){toN=m[1].trim();bodyStart=i+1;continue;}
       if(ln==='')continue;
       if(date||fromN!==null)break;
@@ -716,6 +715,7 @@ function parseLettersTxt(text){
 }
 async function onImportLetters(input){
   const f=input.files[0];input.value='';if(!f)return;
+  if(!S.charName){toast('먼저 상대 이름을 적고 설정 저장을 눌러 주세요. 누가 쓴 편지인지 이름으로 구분해요.',4000);return;}
   const text=await f.text();
   const parsed=parseLettersTxt(text);
   if(!parsed.length){toast('편지를 찾지 못했어요. 형식을 확인해 주세요.');return;}
@@ -1025,7 +1025,7 @@ async function delMem(id){if(!confirm('이 기억 노트를 지울까요?'))retu
 function renderSettings(){
   if(!S)return;
   const p=S.provider;
-  const welcome=(!S.userName||!(PROVIDERS[p].noKey||S.keys[p]))?`<div class="card" style="background:#f1efff;border-color:#e2ddff"><h3>처음 오셨네요 👋</h3><div class="hint" style="color:#555">① 내 이름 입력 → ② AI 연결(API 키) → ③ 저장<br>예전 편지가 있으면 아래 <b>데이터</b>에서 txt를 불러오세요.</div></div>`:'';
+  const welcome=(!S.userName||!S.charName||!(PROVIDERS[p].noKey||S.keys[p]))?`<div class="card" style="background:#f1efff;border-color:#e2ddff"><h3>처음 오셨네요 👋</h3><div class="hint" style="color:#555">① 내 이름과 상대 이름 입력 → ② AI 연결(API 키) → ③ 저장<br>예전 편지가 있으면 아래 <b>데이터</b>에서 txt를 불러오세요.</div></div>`:'';
   $('setBody').innerHTML=`${welcome}
   <div class="card"><h3>프로필</h3>
     <div class="avrow">
@@ -1033,8 +1033,8 @@ function renderSettings(){
       <div class="avpick" onclick="pickAvatar('charAvatar')">${avatarHTML(S.charAvatar,cName(),72)}<span>${esc(cName())} 사진</span></div>
     </div>
     <div class="row"><div class="field"><label>내 이름</label><input type="text" id="s-userName" value="${esc(S.userName)}" placeholder="편지에서 불리는 이름"></div>
-    <div class="field"><label>상대 이름 (짧게)</label><input type="text" id="s-charName" value="${esc(S.charName)}"></div></div>
-    <div class="row"><div class="field"><label>상대 전체 이름</label><input type="text" id="s-charFull" value="${esc(S.charFull)}"></div>
+    <div class="field"><label>상대 이름 (짧게)</label><input type="text" id="s-charName" value="${esc(S.charName)}" placeholder="편지에 적힌 이름"></div></div>
+    <div class="row"><div class="field"><label>상대 전체 이름</label><input type="text" id="s-charFull" value="${esc(S.charFull)}" placeholder="성까지 포함한 이름"></div>
     <div class="field"><label>처음 만난 날</label><input type="date" id="s-startDate" value="${esc(S.startDate)}"></div></div>
   </div>
   <div class="card"><h3>AI 연결</h3>
@@ -1087,7 +1087,7 @@ function onProvChange(init){
 function readSettingsForm(){
   const v=id=>{const el=$(id);return el?el.value:undefined;};
   S.userName=(v('s-userName')||'').trim();
-  S.charName=(v('s-charName')||'').trim()||'이안';
+  S.charName=(v('s-charName')||'').trim();
   S.charFull=(v('s-charFull')||'').trim()||S.charName;
   S.startDate=v('s-startDate')||'';
   const p=v('s-provider');S.provider=p;
