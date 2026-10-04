@@ -824,6 +824,7 @@ async function tick(){
     maybeAutoMemory();
   }else if(curTab==='inbox'&&L.some(l=>l.status==='pending'))renderInbox();
   // 프로필 사진을 바꾼 뒤 1~5분이 지나면 상대가 먼저 메신저로 반응한다.
+  if(S.chatDue&&now>=S.chatDue)fireChat();
   if(!S.chatPaused&&profilePending()&&now>=S.profileEvent.reactAt&&!chatBusy&&hasKey()&&S.userName)genChatReply({proactive:true});
   // 먼저 보내는 편지: 하루 한 번, 정해둔 시간대(기본 저녁 7~8시) 안의 랜덤한 시각에 상대가 먼저 쓴다.
   // 그 시각에 앱이 닫혀 있었다면 그날 안에 앱을 열 때 그 시각으로 도착한다. 지나간 날은 몰아서 보내지 않는다.
@@ -1186,9 +1187,27 @@ async function sendChat(){
   if(pendingChatImg){m.img=pendingChatImg;pendingChatImg=null;$('pendImg').classList.add('hide');}
   await dbPut('chats',m);C.push(m);
   t.value='';onChatInput();renderChat();scrollChat();
-  // 연달아 보내는 메시지를 한 번에 읽고 답하도록 잠깐 기다린다.
+  // 디토처럼 답장 타이밍을 섞는다. 이미 기다리는 중이면 그 시각에 지금 메시지까지 같이 읽고 답한다.
+  if(!S.chatDue||S.chatDue<Date.now()){S.chatDue=Date.now()+chatDelay();await saveS();}
+  scheduleChat();
+}
+// 바로(몇 초) · 30초쯤 · 1~3분 · 가끔 3~5분
+function chatDelay(){
+  const r=Math.random();
+  const sec=r<.3?rand(3,10):r<.65?rand(15,60):r<.95?rand(60,180):rand(180,300);
+  return Math.round(sec*1000);
+}
+// 예약된 답장 시각에 맞춰 깨운다. 앱을 닫았다 열어도 S.chatDue가 남아 있어 tick에서 이어서 답한다.
+function scheduleChat(){
   clearTimeout(chatTimer);
-  chatTimer=setTimeout(genChatReply,2500);
+  if(!S.chatDue)return;
+  chatTimer=setTimeout(fireChat,Math.max(0,S.chatDue-Date.now()));
+}
+async function fireChat(){
+  if(!S.chatDue||Date.now()<S.chatDue)return;
+  if(chatBusy){chatTimer=setTimeout(fireChat,1500);return;}
+  S.chatDue=0;await saveS();
+  if(!S.chatPaused)genChatReply();
 }
 function chatApiMessages(){
   const recent=C.slice(-40);
@@ -1237,7 +1256,7 @@ function splitChat(text){
 }
 async function genChatReply(opts){
   opts=opts||{};
-  if(chatBusy){if(!opts.proactive)chatTimer=setTimeout(genChatReply,1500);return;}
+  if(chatBusy)return;
   const msgs=chatApiMessages();
   const withProfile=profilePending()&&!!profileImg();
   if(opts.proactive){
@@ -1275,7 +1294,8 @@ async function genChatReply(opts){
   }finally{
     chatBusy=false;renderChat();scrollChat();
     // 답장 만드는 사이 새 메시지가 왔으면 거기에도 답한다.
-    if(C.some(c=>c.from==='user'&&c.ts>startedAt)){clearTimeout(chatTimer);chatTimer=setTimeout(genChatReply,1500);}
+    // (답장이 예약돼 있지 않을 때만. 예약돼 있으면 그 시각에 같이 답한다.)
+    if(!S.chatDue&&C.some(c=>c.from==='user'&&c.ts>startedAt)){S.chatDue=Date.now()+1500;await saveS();scheduleChat();}
     maybeAutoMemory();
   }
 }
