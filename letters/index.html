@@ -602,7 +602,7 @@ function chatLine(c){
   let t=c.text||'';
   if(c.photoId){const ph=P.find(p=>p.id===c.photoId);t='(사진을 보냄'+(ph&&ph.tags?': '+ph.tags:'')+')';}
   else if(c.img)t='(사진을 보냄)'+(t?' '+t:'');
-  return `${fmtTimeKo(c.ts)} ${who}: ${t}`;
+  return `${fmtDate(c.ts).slice(5)} ${fmtTimeKo(c.ts)} ${who}: ${t}`;
 }
 // 프롬프트를 두 부분으로 나눈다. stable(캐릭터 설정·기억·문체 예시·규칙)은 연달아 보내는 요청 사이에 그대로라
 // Claude 프롬프트 캐시로 싸게 다시 읽고, dynamic(최근 편지·대화·현재 시각)만 매번 새로 읽힌다.
@@ -615,7 +615,7 @@ function buildSys(mode,excludeId){
 ${S.charSheet||DEFAULT_SHEET}`;
   const mt=memText();
   if(mt)st+=`\n\n[지금까지 둘이 함께한 기억 — 사실관계는 여기서 벗어나지 말 것]\n${mt}`;
-  const recentLetters=L.filter(l=>l.body&&l.status!=='pending'&&l.id!==excludeId).slice(mode==='letter'?-4:-2);
+  const recentLetters=L.filter(l=>l.body&&l.status!=='pending'&&l.id!==excludeId).slice(mode==='letter'?-4:-3);
   const ex=styleSamples(mode==='letter'?4:3,new Set(recentLetters.map(l=>l.id)));
   if(ex.length)st+=`\n\n[${c}의 실제 문체 — 설정보다 이걸 우선한다. 호칭, 어미, 문장 길이, 감정 표현의 세기, 끝맺음을 그대로 따라 한다. 내용과 문장은 베끼지 않는다]\n`+ex.map(l=>`(${fmtDate(l.ts)})\n${l.body.length>1200?l.body.slice(0,1200)+'…':l.body}`).join('\n\n---\n\n');
   st+=`\n\n[공통 규칙]
@@ -646,10 +646,10 @@ ${S.charSheet||DEFAULT_SHEET}`;
     }
   }
   let dy='';
-  if(recentLetters.length)dy+=`[최근에 주고받은 편지]\n`+recentLetters.map(letterLine).join('\n\n');
+  if(recentLetters.length)dy+=`[최근에 주고받은 편지${mode==='chat'?' — 메신저와 같은 두 사람의 같은 날들이다. 편지에서 한 얘기를 기억하고 대화한다(꼭 그 얘기로 시작할 필요는 없다)':''}]\n`+recentLetters.map(letterLine).join('\n\n');
   if(mode==='letter'){
-    const rc=C.slice(-30);
-    if(rc.length)dy+=`\n\n[최근 메신저 대화]\n`+rc.map(chatLine).join('\n');
+    const rc=C.slice(-40);
+    if(rc.length)dy+=`\n\n[최근 메신저 대화 — 편지와 같은 두 사람의 같은 날들이다. 여기서 나온 얘기를 편지에 담아도 되고 안 담아도 되지만, 알고는 있어야 한다]\n`+rc.map(chatLine).join('\n');
   }
   if(profilePending())dy+=`\n\n[알아챌 것]\n${josa(u,'이/가')} ${fmtTimeKo(S.profileEvent.ts)}에 프로필 사진을 새로 바꿨다. 함께 보낸 사진이 새 프로필 사진이다. 이번 답에서 ${josa(c,'이/가')} 그걸 알아채고, 사진 속 모습(표정, 옷, 분위기, 배경 등)을 구체적으로 짚어서 자연스럽게 반응한다. 사진 얘기만 하지는 않는다.`;
   dy+=`\n\n[현재 시각]\n${fmtNow()}`;
@@ -786,7 +786,7 @@ async function genLetter(l){
       const src=L.find(x=>x.id===l.replyTo);
       msg=`[${fmtDate(src?.ts||Date.now())} ${josa(u,'이/가')} ${c}에게 보낸 편지]\n\n${src?.body||''}\n\n위 편지에 ${josa(c,'으로서/로서')} 답장을 써줘.`;
     }else{
-      msg=`(${fmtTimeKo(l.ts)}, ${josa(c,'은/는')} 문득 ${u}에게 먼저 편지를 쓰고 싶어졌다. 요즘 ${c}의 일상, 최근 대화에서 마음에 남은 것, ${u}에게 하고 싶은 말을 담아 먼저 편지를 써줘.)`;
+      msg=`(${fmtDate(l.ts)} ${fmtTimeKo(l.ts)}, ${josa(c,'은/는')} 문득 ${u}에게 먼저 편지를 쓰고 싶어졌다. 요즘 ${c}의 일상, 최근 대화에서 마음에 남은 것, ${u}에게 하고 싶은 말을 담아 먼저 편지를 써줘. 편지는 이 시각에 쓰는 것이다.)`;
     }
     const withProfile=profilePending()&&profileImg();
     const um={role:'user',content:msg};
@@ -832,10 +832,15 @@ async function tick(){
   // 먼저 보내는 편지: 하루 한 번, 정해둔 시간대(기본 저녁 7~8시) 안의 랜덤한 시각에 상대가 먼저 쓴다.
   // 그 시각에 앱이 닫혀 있었다면 그날 안에 앱을 열 때 그 시각으로 도착한다. 지나간 날은 몰아서 보내지 않는다.
   const today=dayKey(now);
-  if(!S.letterPaused&&S.spontaneous&&S.userName&&hasKey()&&S.lastSpontDay!==today&&!L.some(l=>l.status==='pending')){
-    const slot=spontSlot(now);
+  if(!S.letterPaused&&S.spontaneous&&S.userName&&hasKey()&&S.lastSpontDay!==today&&!L.some(l=>l.status==='pending'&&!l.err)){
+    let slot=spontSlot(now),day=today;
+    // 오늘 시각 전인데 어제 편지를 못 받았으면(그 시간에 앱이 닫혀 있었으면) 어제 시각으로 받는다.
+    if(now<slot&&S.lastSpontDay){
+      const yd=now-86400000;
+      if(S.lastSpontDay!==dayKey(yd)&&L.some(l=>l.from==='char')){slot=spontSlot(yd);day=dayKey(yd);}
+    }
     if(now>=slot){
-      S.lastSpontDay=today;await saveS();
+      S.lastSpontDay=day;await saveS();
       const l={from:'char',ts:slot,body:'',status:'pending',deliverAt:slot,read:false,spontaneous:true};
       await dbPut('letters',l);L.push(l);genLetter(l);renderInbox();
     }
