@@ -1,0 +1,1192 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<!-- 개인 기록 보호: 이 페이지는 고른 AI 회사 주소(와 같은 기기의 로컬 모델) 말고는 어디로도 데이터를 보낼 수 없다.
+     외부 글꼴·분석 스크립트도 막혀 있다. 새 AI 회사를 추가하면 connect-src에 그 주소를 넣어야 한다. -->
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self' https://api.anthropic.com https://generativelanguage.googleapis.com https://api.openai.com http://localhost:* http://127.0.0.1:*; worker-src 'self'; manifest-src 'self'; base-uri 'none'; form-action 'none'">
+<meta name="referrer" content="no-referrer">
+<title>BD</title>
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<link rel="icon" href="icons/icon-192.png">
+<meta name="theme-color" content="#0e0d10">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="BD">
+<meta name="mobile-web-app-capable" content="yes">
+<style>
+:root{
+  --bg:#0e0d10;--bg2:#151318;--card:#1c1a20;--card2:#242128;--line:#2c2932;
+  --ink:#ece8ef;--ink2:#9b94a4;--ink3:#625b6b;
+  --acc:#a8234b;--acc2:#e0577f;--acc-bg:rgba(168,35,75,.16);
+  --ok:#4fbf8a;--warn:#e0a84f;--bad:#e05a5a;
+  --bub:#25222a;--bub-me:#4a1b2d;
+  --nav-h:62px;
+  --safe-b:env(safe-area-inset-bottom,0px);--safe-t:env(safe-area-inset-top,0px);
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent;margin:0;padding:0}
+html,body{height:100%;background:#000;overflow:hidden}
+body{font-family:-apple-system,BlinkMacSystemFont,'Apple SD Gothic Neo','Noto Sans KR','Malgun Gothic',sans-serif;color:var(--ink);font-size:15px;line-height:1.55}
+button{font:inherit;color:inherit;background:none;border:none;cursor:pointer}
+input,textarea,select{font:inherit;color:inherit}
+#app{position:relative;max-width:480px;height:100%;margin:0 auto;overflow:hidden;background:var(--bg);display:flex;flex-direction:column}
+.tab{flex:1;display:flex;flex-direction:column;min-height:0}
+.scroll{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain}
+.hide{display:none!important}
+.vh{position:absolute;width:1px;height:1px;opacity:0;overflow:hidden;pointer-events:none;left:0;top:0}
+.avatar{border-radius:50%;background:var(--card2);display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;overflow:hidden;color:var(--ink2);font-weight:600}
+.avatar img{width:100%;height:100%;object-fit:cover}
+
+/* ── 하단 탭 ── */
+.nav{flex-shrink:0;height:calc(var(--nav-h) + var(--safe-b));padding-bottom:var(--safe-b);display:flex;background:var(--bg2);border-top:1px solid var(--line)}
+.nav button{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;color:var(--ink3);font-size:11px}
+.nav button.on{color:var(--ink)}
+.nav svg{width:24px;height:24px}
+
+/* ── 대화 ── */
+.chdr{flex-shrink:0;display:flex;align-items:center;gap:10px;padding:calc(12px + var(--safe-t)) 14px 10px;border-bottom:1px solid var(--line);background:var(--bg)}
+.chdr .nm{flex:1;font-size:17px;font-weight:600}
+.chdr .sub{font-size:12px;color:var(--ink2);font-weight:400}
+.cbtn{width:40px;height:40px;border-radius:50%;display:flex;align-items:center;justify-content:center;color:var(--ink2)}
+.cbtn svg{width:22px;height:22px}
+#strip{flex-shrink:0}
+.pin{display:flex;align-items:center;gap:10px;padding:9px 14px;background:var(--bg2);border-bottom:1px solid var(--line);font-size:13.5px;cursor:pointer}
+.pin .ic{font-size:16px;width:20px;text-align:center}
+.pin .t{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pin .r{font-variant-numeric:tabular-nums;font-weight:600;flex-shrink:0}
+.pin.over .r{color:var(--bad)}
+.pin.pomo .r{color:var(--acc2)}
+.pin .x{flex-shrink:0;border:1px solid var(--line);border-radius:12px;padding:3px 10px;font-size:12px;color:var(--ink2)}
+#chatlist{padding:8px 12px 16px}
+.dsep{text-align:center;color:var(--ink3);font-size:12px;margin:18px 0 10px}
+.mrow{display:flex;align-items:flex-end;gap:6px;margin:3px 0}
+.mrow.me{justify-content:flex-end}
+.mrow .av{width:38px;height:38px}
+.mrow .avsp{width:38px;flex-shrink:0}
+.bub{max-width:74%;padding:10px 15px;border-radius:20px;background:var(--bub);font-size:15.5px;line-height:1.5;white-space:pre-wrap;word-break:keep-all;overflow-wrap:anywhere}
+.me .bub{background:var(--bub-me)}
+.mt{font-size:11px;color:var(--ink3);flex-shrink:0;padding-bottom:2px}
+.bub.img{padding:0;overflow:hidden;background:#222;width:60%;max-width:60%}
+.bub.img img{display:block;width:100%;max-height:420px;object-fit:cover;cursor:pointer}
+.sysmsg{display:flex;justify-content:center;margin:10px 0}
+.sysmsg span{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:6px 14px;font-size:13px;color:var(--ink2)}
+.sysmsg.done span{border-color:rgba(79,191,138,.4);color:var(--ok)}
+.sysmsg.stop span{border-color:rgba(224,168,79,.4);color:var(--warn)}
+.typing span{display:inline-block;width:7px;height:7px;border-radius:50%;background:#888;margin:0 2px;animation:blink 1.2s infinite}
+.typing span:nth-child(2){animation-delay:.2s}.typing span:nth-child(3){animation-delay:.4s}
+@keyframes blink{0%,80%,100%{opacity:.25}40%{opacity:1}}
+.cin{flex-shrink:0;display:flex;align-items:flex-end;gap:6px;padding:8px 10px calc(8px + var(--safe-b));background:var(--bg2);border-top:1px solid var(--line)}
+.tab-chat .cin{padding-bottom:8px}
+.cin textarea{flex:1;background:var(--card);border:1px solid var(--line);border-radius:20px;outline:none;resize:none;color:var(--ink);font-size:16px;line-height:1.45;max-height:120px;padding:9px 14px}
+.cin textarea::placeholder{color:var(--ink3)}
+.cin button,.cin label{width:40px;height:40px;display:flex;align-items:center;justify-content:center;color:var(--ink2);flex-shrink:0;cursor:pointer}
+.cin svg{width:24px;height:24px}
+.cin .send{background:var(--acc);border-radius:50%;color:#fff}
+.cin .send svg{width:19px;height:19px}
+.paused-bar{flex-shrink:0;padding:16px 12px;background:var(--bg2);color:var(--ink3);text-align:center;font-size:14.5px;cursor:pointer;border-top:1px solid var(--line)}
+.pendimg{display:flex;gap:6px;align-items:center;padding:8px 12px 0;background:var(--bg2)}
+.pendimg img{height:64px;border-radius:8px}
+
+/* ── 기록 ── */
+.phdr{flex-shrink:0;padding:calc(16px + var(--safe-t)) 18px 8px;font-size:24px;font-weight:700;display:flex;justify-content:space-between;align-items:center}
+.phdr .s{font-size:13px;font-weight:400;color:var(--ink2)}
+.wrap{padding:6px 14px 40px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:16px;margin-bottom:12px}
+.card h3{font-size:14px;font-weight:600;color:var(--ink2);margin-bottom:10px}
+.today .big{font-size:34px;font-weight:700;letter-spacing:-.5px;line-height:1.15;font-variant-numeric:tabular-nums}
+.today .goal{font-size:13.5px;color:var(--ink2);margin-top:2px}
+.bar{height:8px;border-radius:4px;background:var(--card2);overflow:hidden;margin-top:12px}
+.bar i{display:block;height:100%;background:linear-gradient(90deg,var(--acc),var(--acc2));border-radius:4px}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:14px}
+.stat{background:var(--bg2);border-radius:12px;padding:10px 6px;text-align:center}
+.stat b{display:block;font-size:18px;font-variant-numeric:tabular-nums}
+.stat span{font-size:11.5px;color:var(--ink2)}
+.week{display:flex;align-items:flex-end;gap:8px;height:130px;padding-top:10px}
+.week .col{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%;gap:4px}
+.week .v{font-size:10.5px;color:var(--ink2);font-variant-numeric:tabular-nums}
+.week .b{width:100%;max-width:30px;border-radius:6px 6px 3px 3px;background:var(--acc);min-height:2px}
+.week .col.today .b{background:var(--acc2)}
+.week .d{font-size:11.5px;color:var(--ink3)}
+.week .col.today .d{color:var(--ink);font-weight:600}
+.heat{display:grid;grid-auto-flow:column;grid-template-rows:repeat(7,1fr);gap:3px;overflow-x:auto}
+.heat i{width:13px;height:13px;border-radius:3px;background:var(--card2);display:block}
+.heat i.l1{background:#4a1a2b}.heat i.l2{background:#76203f}.heat i.l3{background:#a8234b}.heat i.l4{background:#e0577f}
+.heat i.fut{background:transparent}
+.legend{display:flex;align-items:center;gap:4px;justify-content:flex-end;margin-top:8px;font-size:11px;color:var(--ink3)}
+.legend i{width:11px;height:11px;border-radius:3px;display:inline-block}
+.rday{font-size:12.5px;color:var(--ink3);margin:16px 4px 6px;display:flex;justify-content:space-between}
+.rrow{display:flex;align-items:center;gap:10px;padding:11px 12px;background:var(--card);border:1px solid var(--line);border-radius:12px;margin-bottom:6px;cursor:pointer}
+.rrow .ic{font-size:17px;width:22px;text-align:center}
+.rrow .t{flex:1;min-width:0}
+.rrow .tk{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:14.5px}
+.rrow .meta{font-size:12px;color:var(--ink2)}
+.rrow .m{font-size:13.5px;font-weight:600;font-variant-numeric:tabular-nums;flex-shrink:0}
+.chip{display:inline-block;border-radius:10px;padding:1px 8px;font-size:11.5px;font-weight:600;margin-right:4px}
+.chip.ok{background:rgba(79,191,138,.15);color:var(--ok)}
+.chip.late{background:rgba(224,168,79,.15);color:var(--warn)}
+.chip.bad{background:rgba(224,90,90,.15);color:var(--bad)}
+.chip.mute{background:var(--card2);color:var(--ink2)}
+.empty{padding:40px 20px;text-align:center;color:var(--ink3);line-height:1.8;font-size:14px}
+
+/* ── 설정 ── */
+details.card>summary{list-style:none;display:flex;align-items:center;justify-content:space-between;cursor:pointer}
+details.card>summary::-webkit-details-marker{display:none}
+details.card>summary h3{margin:0}
+details.card>summary .chev{width:20px;height:20px;color:var(--ink3);transition:transform .2s}
+details.card[open]>summary .chev{transform:rotate(180deg)}
+details.card[open]>summary{margin-bottom:12px}
+.field{margin-bottom:12px}
+.field label{display:block;font-size:12.5px;color:var(--ink2);margin-bottom:4px}
+.field input,.field select,.field textarea{width:100%;border:1px solid var(--line);border-radius:10px;padding:10px 12px;background:var(--bg2);outline:none;color:var(--ink)}
+.field textarea{min-height:200px;line-height:1.6;font-size:14px;resize:vertical}
+.hint{font-size:12.5px;color:var(--ink2);line-height:1.6;margin-top:4px}
+.row{display:flex;gap:8px;align-items:flex-start}
+.row>*{flex:1;min-width:0}
+.avrow{display:flex;gap:22px;justify-content:center;margin-bottom:14px}
+.avpick{display:flex;flex-direction:column;align-items:center;gap:6px;font-size:12.5px;color:var(--ink2);cursor:pointer}
+.primary{background:var(--acc);color:#fff;border-radius:12px;padding:12px 18px;font-weight:600;width:100%}
+.ghost{display:block;text-align:center;border:1px solid var(--line);border-radius:12px;padding:11px 14px;color:var(--ink);background:var(--bg2);width:100%;cursor:pointer}
+.danger{color:var(--bad)!important}
+.prog{font-size:13px;color:var(--acc2);margin-top:8px;min-height:16px;white-space:pre-wrap}
+.memcard{background:var(--bg2);border-radius:10px;padding:10px 12px;margin-top:8px;font-size:13.5px;white-space:pre-wrap}
+.memcard .md{display:flex;justify-content:space-between;color:var(--ink3);font-size:12px;margin-bottom:4px}
+
+/* ── 공통 오버레이 ── */
+#viewer{position:fixed;inset:0;background:rgba(0,0,0,.92);display:none;align-items:center;justify-content:center;z-index:50}
+#viewer img{max-width:100%;max-height:100%}
+#toast{position:fixed;left:50%;bottom:120px;transform:translateX(-50%);background:rgba(50,46,56,.96);color:#fff;padding:10px 18px;border-radius:20px;font-size:14px;z-index:60;display:none;max-width:86%;text-align:center}
+.sheet-bg{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:40;display:none;align-items:flex-end;justify-content:center}
+.sheet{width:100%;max-width:480px;background:var(--card);border-radius:18px 18px 0 0;padding:10px 0 calc(14px + var(--safe-b))}
+.sheet .sh{padding:12px 24px 6px;font-size:13px;color:var(--ink2)}
+.sheet>button{display:block;width:100%;text-align:left;padding:15px 24px;font-size:16px}
+.sheet>button:active{background:var(--card2)}
+.form{padding:8px 18px 4px}
+.seg{display:flex;gap:8px;margin-bottom:12px}
+.seg button{flex:1;border:1px solid var(--line);border-radius:10px;padding:10px 0;background:var(--bg2)}
+.seg button.on{border-color:var(--acc);background:var(--acc-bg);color:#fff}
+</style>
+</head>
+<body>
+<div id="app">
+
+<!-- ════════ 대화 ════════ -->
+<section id="t-chat" class="tab tab-chat">
+  <div class="chdr">
+    <span class="avatar" id="chatAv" style="width:38px;height:38px"></span>
+    <div class="nm"><div id="chatName"></div><div class="sub" id="chatSub"></div></div>
+    <button class="cbtn" onclick="chatMenu()" aria-label="메뉴"><svg viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="1.8"/><circle cx="12" cy="12" r="1.8"/><circle cx="19" cy="12" r="1.8"/></svg></button>
+  </div>
+  <div id="strip"></div>
+  <div class="scroll" id="chatScroll"><div id="chatlist"></div></div>
+  <div class="pendimg hide" id="pendImg"></div>
+  <div class="paused-bar hide" id="pausedBar" onclick="togglePause()"></div>
+  <div class="cin" id="chatInputBar">
+    <button onclick="openPomo()" aria-label="뽀모도로"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l2.5 2.5M9.5 2.5h5M12 2.5V5"/></svg></button>
+    <label for="chatImgFile" aria-label="사진"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="3" y="3" width="18" height="18" rx="3"/><circle cx="9" cy="9" r="2"/><path d="m21 15-5-5L5 21"/></svg></label>
+    <textarea id="chatInput" rows="1" placeholder="보고하기" oninput="onChatInput()" onkeydown="onChatKey(event)"></textarea>
+    <button id="chatSendBtn" class="send" onclick="sendChat()" aria-label="보내기"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M3 20.5 21 12 3 3.5 3 10l12 2-12 2z"/></svg></button>
+    <input type="file" id="chatImgFile" accept="image/*" class="vh" onchange="onChatImg(this)">
+  </div>
+</section>
+
+<!-- ════════ 기록 ════════ -->
+<section id="t-rec" class="tab hide">
+  <div class="phdr"><span>기록</span><span class="s" id="recSub"></span></div>
+  <div class="scroll"><div class="wrap" id="recBody"></div></div>
+</section>
+
+<!-- ════════ 설정 ════════ -->
+<section id="t-set" class="tab hide">
+  <div class="phdr"><span>설정</span></div>
+  <div class="scroll"><div class="wrap" id="setBody"></div></div>
+</section>
+
+<nav class="nav">
+  <button data-tab="chat" onclick="setTab('chat')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M12 3.5c4.97 0 9 3.58 9 8s-4.03 8-9 8c-1.1 0-2.15-.17-3.12-.5L4 20.5l1.3-3.9C4.17 15.2 3 13.45 3 11.5c0-4.42 4.03-8 9-8z"/></svg>대화</button>
+  <button data-tab="rec" onclick="setTab('rec')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg>기록</button>
+  <button data-tab="set" onclick="setTab('set')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><path d="M4 6h16M4 12h16M4 18h16"/></svg>설정</button>
+</nav>
+</div>
+
+<div id="viewer" onclick="this.style.display='none'"><img id="viewerImg" alt=""></div>
+<div id="toast"></div>
+<div class="sheet-bg" id="sheetBg" onclick="if(event.target===this)closeSheet()"><div class="sheet" id="sheet"></div></div>
+<input type="file" id="fileBackup" class="vh" onchange="onImportBackup(this)">
+<input type="file" id="fileAvatarUser" accept="image/*" class="vh" onchange="onAvatar(this,'userAvatar')">
+<input type="file" id="fileAvatarChar" accept="image/*" class="vh" onchange="onAvatar(this,'charAvatar')">
+
+<script>
+/* ══════════════════════ 설정 / 상태 ══════════════════════ */
+// 레포가 공개라서 실제 인물·관계 설정은 여기 넣지 않는다. 이름과 설정은 모두 앱 안에서 입력하고, 이 기기에만 저장된다.
+const PROVIDERS={
+  claude:{label:'Claude',kind:'anthropic',defaultModel:'claude-sonnet-5-5'},
+  gemini:{label:'Gemini',kind:'google',defaultModel:'gemini-3.6-flash'},
+  openai:{label:'ChatGPT',kind:'openai',baseUrl:'https://api.openai.com/v1',defaultModel:'gpt-4o'},
+  local:{label:'로컬 모델 (Ollama)',kind:'openai',defaultModel:'',noKey:true},
+};
+const DEFAULT_CHAR=`[기본 정보]
+- 이름, 나이, 하는 일
+
+[성격]
+-
+
+[말투]
+- 상대를 부르는 호칭, 자주 쓰는 어미와 표현`;
+const DEFAULT_REL=`[관계]
+- 
+
+[호칭]
+-
+
+[규칙]
+- 공부를 시작하고 끝낼 때 보고한다.
+-
+
+[칭찬과 피드백]
+-
+
+[하지 않는 것]
+- `;
+const DEF={
+  provider:'claude',keys:{},models:{},localUrl:'http://localhost:11434/v1',
+  userName:'',charName:'',userAvatar:'',charAvatar:'',
+  charSheet:DEFAULT_CHAR,relSheet:DEFAULT_REL,stopWord:'',
+  graceMin:2,nudgeEvery:10,maxNudges:5,idleHours:3,quietFrom:1,quietTo:8,
+  pomoMin:25,goalMin:180,
+  checks:[],pomo:null,goals:{},chatPaused:false,chatDue:0,calmUntil:0,memUpTo:0,lastTask:'',
+};
+let db=null,S=null;
+let C=[],R=[],M=[];   // 메시지, 성과 기록, 기억(요약)
+let curTab='chat',pendingImg=null,chatTimer=null,chatBusy=false,memBusy=false;
+
+/* ══════════════════════ 유틸 ══════════════════════ */
+const $=id=>document.getElementById(id);
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+const MIN=60000;
+function esc(s){const d=document.createElement('div');d.textContent=s==null?'':String(s);return d.innerHTML;}
+function hasBatchim(w){if(!w)return false;const c=w.charCodeAt(w.length-1);return c>=0xAC00&&c<=0xD7A3&&(c-0xAC00)%28>0;}
+function josa(w,pair){const[a,b]=pair.split('/');return w+(hasBatchim(w)?a:b);}
+function uName(){return S.userName||'나';}
+function cName(){return S.charName||'상대';}
+function pad(n){return String(n).padStart(2,'0');}
+function dk(ts){const d=new Date(ts);return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate());}
+function fmtDate(ts){return dk(ts).replace(/-/g,'.');}
+function hm(ts){const d=new Date(ts);return pad(d.getHours())+':'+pad(d.getMinutes());}
+function fmtTimeKo(ts){const d=new Date(ts);let h=d.getHours();const ap=h<12?'오전':'오후';h=h%12||12;return ap+' '+h+':'+pad(d.getMinutes());}
+function fmtNow(){return new Intl.DateTimeFormat('ko-KR',{year:'numeric',month:'long',day:'numeric',weekday:'short',hour:'2-digit',minute:'2-digit',hour12:false}).format(new Date());}
+function fmtMin(m){m=Math.round(m||0);if(m<60)return m+'분';const h=Math.floor(m/60),r=m%60;return h+'시간'+(r?' '+r+'분':'');}
+function mmss(ms){ms=Math.max(0,ms);const s=Math.floor(ms/1000);return pad(Math.floor(s/60))+':'+pad(s%60);}
+function rand(a,b){return a+Math.random()*(b-a);}
+function toast(msg,ms){const t=$('toast');t.textContent=msg;t.style.display='block';clearTimeout(t._h);t._h=setTimeout(()=>t.style.display='none',ms||2600);}
+function avatarHTML(src,name,size,cls){
+  const s=size||40;
+  return `<span class="avatar${cls?' '+cls:''}" style="width:${s}px;height:${s}px;font-size:${Math.round(s*.4)}px">${src?`<img src="${src}" alt="">`:esc((name||'?').slice(0,1))}</span>`;
+}
+function setAvatar(el,src,name){el.innerHTML=src?`<img src="${src}" alt="">`:esc((name||'?').slice(0,1));}
+// "60분", "1시간 30분", "90" → 분
+function parseMin(s){
+  s=String(s||'');let m=0,hit=false;
+  const h=s.match(/(\d+(?:\.\d+)?)\s*시간/);if(h){m+=parseFloat(h[1])*60;hit=true;}
+  const mm=s.match(/(\d+)\s*분/);if(mm){m+=+mm[1];hit=true;}
+  if(!hit){const n=s.match(/^\s*(\d+)\s*$/);if(n)m=+n[1];}
+  return Math.round(m);
+}
+function sameTask(a,b){
+  const n=x=>String(x||'').replace(/\s+/g,'').toLowerCase();
+  a=n(a);b=n(b);return !!a&&!!b&&(a===b||a.includes(b)||b.includes(a));
+}
+function hourIn(h,from,to){return from<=to?(h>=from&&h<to):(h>=from||h<to);}
+
+/* ══════════════════════ IndexedDB ══════════════════════ */
+function openDB(){
+  return new Promise((res,rej)=>{
+    const r=indexedDB.open('bdAppDB',1);
+    r.onupgradeneeded=e=>{
+      const d=e.target.result;
+      d.createObjectStore('kv',{keyPath:'key'});
+      d.createObjectStore('chats',{keyPath:'id',autoIncrement:true});
+      d.createObjectStore('records',{keyPath:'id',autoIncrement:true});
+      d.createObjectStore('mems',{keyPath:'id',autoIncrement:true});
+    };
+    r.onsuccess=e=>res(e.target.result);r.onerror=e=>rej(e.target.error);
+  });
+}
+function tx(store,mode){return db.transaction(store,mode||'readonly').objectStore(store);}
+function req2p(r){return new Promise((res,rej)=>{r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error);});}
+const dbAll=s=>req2p(tx(s).getAll());
+const dbGet=(s,k)=>req2p(tx(s).get(k));
+async function dbPut(s,v){const id=await req2p(tx(s,'readwrite').put(v));if(v.id===undefined)v.id=id;return id;}
+const dbDel=(s,k)=>req2p(tx(s,'readwrite').delete(k));
+const dbClear=s=>req2p(tx(s,'readwrite').clear());
+async function saveS(){await dbPut('kv',{key:'S',value:S});}
+// 브라우저가 저장 공간이 부족할 때 이 앱 데이터를 마음대로 지우지 못하게 요청한다.
+function persistStorage(){try{navigator.storage&&navigator.storage.persist&&navigator.storage.persist();}catch(e){}}
+
+/* ══════════════════════ 부팅 ══════════════════════ */
+async function boot(){
+  db=await openDB();
+  const s=await dbGet('kv','S');
+  S=Object.assign({},DEF,s?s.value:{});
+  [C,R,M]=await Promise.all(['chats','records','mems'].map(dbAll));
+  sortAll();
+  persistStorage();
+  setTab(!S.userName||!S.charName||!hasKey()?'set':'chat');
+  scheduleChat();
+  tick();
+  setInterval(tick,5000);
+  setInterval(()=>{if(curTab==='chat'&&S.pomo)renderStrip();},1000);
+  document.addEventListener('visibilitychange',()=>{if(!document.hidden){tick();if(curTab==='chat'){renderStrip();renderChat();}}});
+}
+function sortAll(){C.sort((a,b)=>a.ts-b.ts||a.id-b.id);R.sort((a,b)=>a.ts-b.ts);M.sort((a,b)=>a.fromTs-b.fromTs);}
+function setTab(t){
+  curTab=t;
+  for(const k of ['chat','rec','set'])$('t-'+k).classList.toggle('hide',k!==t);
+  document.querySelectorAll('.nav button').forEach(b=>b.classList.toggle('on',b.dataset.tab===t));
+  if(t==='chat')openChat();
+  if(t==='rec')renderRec();
+  if(t==='set')renderSettings();
+}
+
+/* ══════════════════════ LLM 호출 ══════════════════════ */
+async function fetchRetry(url,opts,tries){
+  tries=tries===undefined?2:tries;
+  for(let i=0;;i++){
+    let r;
+    try{r=await fetch(url,opts);}
+    catch(e){if(e.name!=='TypeError'||i>=tries)throw new Error('연결이 끊겼어요. 다시 시도해 주세요.');await sleep(2000*(i+1));continue;}
+    if((r.status!==429&&r.status!==529&&r.status!==503)||i>=tries)return r;
+    await sleep(1500*Math.pow(2,i));
+  }
+}
+async function readJson(r){const t=await r.text().catch(()=>'');try{return JSON.parse(t);}catch(e){return{_raw:t};}}
+function apiErr(label,r,d){
+  if(r.status===429)return new Error(label+': 요청이 너무 많아요. 잠시 후 다시 시도해 주세요.');
+  const m=d?.error?.message||(typeof d?.error==='string'?d.error:'')||(d?._raw||'').slice(0,200);
+  return new Error(label+': '+(m||('오류 '+r.status)));
+}
+const CLAUDE_PRICE={'claude-sonnet-5-5':[2,10,0.2],'claude-sonnet-5':[2,10,0.2],'claude-opus-5-5':[4,20,0.2],'claude-opus-5':[5,25,0.5],'claude-sonnet-4-6':[3,15,0.3],'claude-haiku-4-5':[1,5,0.1]};
+const EFFORT_OK=/^claude-(opus-5|sonnet-5|fable-5|opus-4-[678]|sonnet-4-6|opus-4-6)/;
+async function addUsage(provider,model,u){
+  const mk=new Date().toISOString().slice(0,7);
+  if(!S.usage||S.usage.month!==mk)S.usage={month:mk,calls:0,in:0,out:0,cr:0,cw:0,usd:0,priced:true};
+  const g=S.usage;g.calls++;g.in+=u.in||0;g.out+=u.out||0;g.cr+=u.cr||0;g.cw+=u.cw||0;
+  const pr=provider==='claude'?CLAUDE_PRICE[model]:null;
+  if(pr)g.usd+=((u.in||0)*pr[0]+(u.cw||0)*pr[0]*1.25+(u.cr||0)*pr[2]+(u.out||0)*pr[1])/1e6;
+  else g.priced=false;
+  await saveS();
+}
+// sys: 문자열이거나 {stable, dynamic}. stable은 Claude 프롬프트 캐시로 싸게 다시 읽힌다.
+async function callLLM({sys,messages,maxTokens,temperature,meta,thinking,effort}){
+  meta=meta||{};
+  const sysText=typeof sys==='string'?sys:(sys.stable+(sys.dynamic?'\n\n'+sys.dynamic:''));
+  maxTokens=maxTokens||2000;
+  const p=S.provider,cfg=PROVIDERS[p];
+  const key=(S.keys[p]||'').trim();
+  const model=((S.models[p]||'').trim())||cfg.defaultModel;
+  if(!cfg.noKey&&!key)throw new Error(cfg.label+' API 키가 없어요. 설정 탭에서 입력해 주세요.');
+  if(!model)throw new Error('모델 이름이 비어 있어요. 설정 탭에서 입력해 주세요.');
+  if(cfg.kind==='anthropic'){
+    const am=messages.map(m=>({role:m.role,content:m.imgs&&m.imgs.length?[...m.imgs.map(i=>({type:'image',source:{type:'base64',media_type:i.mime,data:i.b64}})),{type:'text',text:m.content||'(사진)'}]:m.content}));
+    const system=typeof sys==='string'?sys:[{type:'text',text:sys.stable,cache_control:{type:'ephemeral'}},...(sys.dynamic?[{type:'text',text:sys.dynamic}]:[])];
+    const body={model,max_tokens:maxTokens,system,messages:am};
+    if(effort&&EFFORT_OK.test(model))body.output_config={effort};
+    const r=await fetchRetry('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json','x-api-key':key,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},body:JSON.stringify(body)});
+    const d=await readJson(r);
+    if(!r.ok||d.error)throw apiErr(cfg.label,r,d);
+    meta.finish=d.stop_reason||'';
+    const us=d.usage||{};addUsage(p,model,{in:us.input_tokens,out:us.output_tokens,cr:us.cache_read_input_tokens,cw:us.cache_creation_input_tokens});
+    return (d.content||[]).filter(b=>b.type==='text').map(b=>b.text).join('');
+  }
+  if(cfg.kind==='google'){
+    const gm=messages.map(m=>({role:m.role==='assistant'?'model':'user',parts:[...(m.imgs||[]).map(i=>({inline_data:{mime_type:i.mime,data:i.b64}})),{text:m.content||'(사진)'}]}));
+    const body={system_instruction:{parts:[{text:sysText}]},contents:gm,generationConfig:{maxOutputTokens:Math.max(maxTokens*3,6000),temperature:temperature??1.0,thinkingConfig:{thinkingBudget:thinking??1024}},
+      safetySettings:['HARM_CATEGORY_SEXUALLY_EXPLICIT','HARM_CATEGORY_HATE_SPEECH','HARM_CATEGORY_HARASSMENT','HARM_CATEGORY_DANGEROUS_CONTENT'].map(c=>({category:c,threshold:'BLOCK_NONE'}))};
+    const r=await fetchRetry(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`,{method:'POST',headers:{'Content-Type':'application/json','x-goog-api-key':key},body:JSON.stringify(body)});
+    const d=await readJson(r);
+    if(!r.ok||d.error)throw apiErr(cfg.label,r,d);
+    const um=d.usageMetadata||{};addUsage(p,model,{in:um.promptTokenCount,out:(um.candidatesTokenCount||0)+(um.thoughtsTokenCount||0),cr:0,cw:0});
+    meta.finish=d.promptFeedback?.blockReason?'BLOCKED_'+d.promptFeedback.blockReason:(d.candidates?.[0]?.finishReason||'');
+    return (d.candidates?.[0]?.content?.parts||[]).filter(x=>!x.thought).map(x=>x.text||'').join('');
+  }
+  const base=(p==='local'?S.localUrl:cfg.baseUrl).replace(/\/+$/,'');
+  const om=messages.map(m=>({role:m.role,content:m.imgs&&m.imgs.length?[{type:'text',text:m.content||'(사진)'},...m.imgs.map(i=>({type:'image_url',image_url:{url:`data:${i.mime};base64,${i.b64}`}}))]:m.content}));
+  const headers={'Content-Type':'application/json'};
+  if(key)headers.Authorization='Bearer '+key;
+  const r=await fetchRetry(base+'/chat/completions',{method:'POST',headers,body:JSON.stringify({model,max_tokens:maxTokens,temperature:temperature??0.9,messages:[{role:'system',content:sysText},...om]})});
+  const d=await readJson(r);
+  if(!r.ok||d.error)throw apiErr(cfg.label,r,d);
+  meta.finish=d.choices?.[0]?.finish_reason||'';
+  if(d.usage)addUsage(p,model,{in:d.usage.prompt_tokens,out:d.usage.completion_tokens});
+  return d.choices?.[0]?.message?.content||'';
+}
+function hasKey(){return PROVIDERS[S.provider].noKey||!!(S.keys[S.provider]||'').trim();}
+
+/* ══════════════════════ 성과 통계 ══════════════════════ */
+function dayRecs(day){return R.filter(r=>r.day===day);}
+function dayMinutes(day){return dayRecs(day).reduce((n,r)=>n+(r.minutes||0),0);}
+function goalFor(day){const g=S.goals&&S.goals[day];return g!=null?g:(+S.goalMin||0);}
+function dayChecks(day){
+  const cs=dayRecs(day).filter(r=>r.type==='check');
+  return{total:cs.length,ontime:cs.filter(r=>r.verdict==='통과'&&!r.lateMin).length,late:cs.filter(r=>r.verdict==='통과'&&r.lateMin>0).length,missed:cs.filter(r=>r.verdict==='미보고').length,nudges:cs.reduce((n,r)=>n+(r.nudges||0),0)};
+}
+function activeDay(day){return dayRecs(day).some(r=>(r.minutes||0)>0||r.verdict==='통과');}
+// 오늘 아직 기록이 없으면 어제부터 센다(오늘이 끝나기 전엔 연속이 끊긴 게 아니다).
+function streak(){
+  let d=new Date();d.setHours(12,0,0,0);
+  if(!activeDay(dk(d)))d.setDate(d.getDate()-1);
+  let n=0;while(activeDay(dk(d))){n++;d.setDate(d.getDate()-1);}
+  return n;
+}
+function lastDays(n){const out=[];const d=new Date();d.setHours(12,0,0,0);d.setDate(d.getDate()-(n-1));for(let i=0;i<n;i++){out.push(dk(d));d.setDate(d.getDate()+1);}return out;}
+function allTime(){
+  const cs=R.filter(r=>r.type==='check');
+  const passed=cs.filter(r=>r.verdict==='통과');
+  return{
+    minutes:R.reduce((n,r)=>n+(r.minutes||0),0),
+    checks:cs.length,
+    ontimeRate:cs.length?Math.round(passed.filter(r=>!r.lateMin).length/cs.length*100):null,
+    days:new Set(R.filter(r=>(r.minutes||0)>0).map(r=>r.day)).size,
+  };
+}
+// 뽀모도로로 이미 기록된 시간과 겹치지 않게, 그 구간에 쌓인 뽀모도로 시간을 뺀다.
+function pomoMinutesBetween(a,b){return R.filter(r=>r.type==='pomo'&&r.ts>=a&&r.ts<=b).reduce((n,r)=>n+(r.minutes||0),0);}
+
+/* ══════════════════════ 프롬프트 ══════════════════════ */
+function memText(){return M.map(m=>`[${fmtDate(m.fromTs)} ~ ${fmtDate(m.toTs)}]\n${m.content}`).join('\n\n');}
+function chatLine(c){
+  const who=c.from==='char'?cName():uName();
+  return `${fmtDate(c.ts).slice(5)} ${hm(c.ts)} ${who}: ${c.kind?'['+c.text+']':(c.img?'(사진) ':'')+(c.text||'')}`;
+}
+function recLine(r){
+  const v=r.type==='pomo'?(r.completed?'뽀모도로 완료':'뽀모도로 중단'):r.type==='log'?'자율 보고':r.verdict==='미보고'?'미보고':r.lateMin?`${r.lateMin}분 지각 보고`:'제때 보고';
+  return `- ${fmtDate(r.ts).slice(5)} ${hm(r.ts)} ${r.task} · ${v}${r.minutes?' · '+fmtMin(r.minutes):''}${r.verdict&&r.verdict!=='미보고'&&r.type!=='pomo'?' · '+r.verdict:''}${r.nudges?` · 독촉 ${r.nudges}번`:''}${r.redo?` · 재보고 ${r.redo}번`:''}${r.photo?' · 사진':''}`;
+}
+function stateText(){
+  const now=Date.now(),today=dk(now),u=uName();
+  const L=[`[현재 시각] ${fmtNow()}`];
+  if(S.checks.length){
+    L.push('[걸려 있는 보고 마감]');
+    for(const c of S.checks){
+      const d=Math.round((c.dueAt-now)/MIN);
+      L.push(`- "${c.task}" · ${hm(c.dueAt)}까지 · ${d>=0?d+'분 남음':(-d)+'분 지남'}${c.nudges?` · 독촉 ${c.nudges}번 함`:''}${c.redo?` · 재보고 ${c.redo}번째`:''}`);
+    }
+  }else L.push('[걸려 있는 보고 마감] 없음');
+  if(S.pomo)L.push(`[뽀모도로 진행 중] "${S.pomo.task}" · ${S.pomo.min}분 중 ${Math.floor((now-S.pomo.startAt)/MIN)}분 지남 · ${hm(S.pomo.endAt)}에 끝남 (집중하는 중이니 방해하지 않는다)`);
+  const g=goalFor(today),m=dayMinutes(today),ck=dayChecks(today);
+  L.push(`[오늘] 공부 ${fmtMin(m)}${g?` / 목표 ${fmtMin(g)} (${Math.round(m/g*100)}%)`:''} · 보고 ${ck.total}건 (제때 ${ck.ontime}, 지각 ${ck.late}, 미보고 ${ck.missed}) · 독촉 ${ck.nudges}번`);
+  const wk=lastDays(7).map(d=>`${d.slice(5).replace('-','/')} ${fmtMin(dayMinutes(d))}`).join(', ');
+  L.push(`[최근 7일 공부 시간] ${wk}`);
+  const at=allTime();
+  L.push(`[누적] 연속 ${streak()}일 · 총 ${fmtMin(at.minutes)} · 공부한 날 ${at.days}일${at.ontimeRate!=null?` · 제때 보고율 ${at.ontimeRate}%`:''}`);
+  const rec=R.slice(-10);
+  if(rec.length)L.push('[최근 기록]\n'+rec.map(recLine).join('\n'));
+  if(S.calmUntil>now)L.push(`[주의] ${josa(u,'이/가')} ${hm(S.calmUntil-3*3600000)}쯤 멈춤 단어를 말했다. 지금은 관리를 내려놓고 다정하게 상태를 살핀다. 지시, 꾸중, 보고 마감을 걸지 않는다.`);
+  return L.join('\n');
+}
+function buildSys(){
+  const u=uName(),c=cName();
+  let st=`당신은 ${c}입니다. ${josa(u,'과/와')} 메신저로 대화하는 가까운 사이입니다. 두 사람의 관계는 아래 [관계와 규칙]을 따릅니다. ${josa(c,'은/는')} ${u}의 하루와 공부를 관리하고, 보고를 받고, 검사하고, 칭찬하거나 따끔하게 짚습니다.
+아래 설정을 바탕으로 언제나 ${josa(c,'으로서/로서')}만 말하세요.
+
+[캐릭터 설정]
+${S.charSheet||DEFAULT_CHAR}
+
+[관계와 규칙]
+${S.relSheet||DEFAULT_REL}`;
+  const mt=memText();
+  if(mt)st+=`\n\n[지금까지의 기억 — 사실관계는 여기서 벗어나지 말 것]\n${mt}`;
+  st+=`\n\n[관리 방식 — 앱이 태그를 읽어서 마감과 기록을 관리한다. 태그는 ${u}에게 보이지 않는다]
+- 할 일을 시키면서 언제까지 보고하라고 정할 때는 답장 맨 마지막 줄에 [보고: 60분 | 할 일] 또는 [보고: 21:30 | 할 일] 을 적는다. 시간은 지금부터 걸리는 시간이나 마감 시각. 말로만 "1시간 뒤에 보고해"라고 하고 태그를 빼면 앱이 마감을 모른다. 반드시 태그를 붙인다.
+- 같은 일의 마감을 바꿀 때도 같은 할 일 이름으로 [보고: ...]를 다시 적으면 마감이 바뀐다.
+- ${josa(u,'이/가')} 보고하면(글, 사진, 뽀모도로 완료) 검사하고 맨 마지막 줄에 [확인: 통과 | 할 일 | 공부한 시간] 또는 [확인: 재보고 | 할 일] 을 적는다. 공부한 시간은 보고 내용으로 알 수 있을 때만, 뽀모도로로 이미 기록된 시간은 빼고 적는다. 모르면 비운다(예: [확인: 통과 | 영어 단어]).
+- 사진 검사는 사진을 실제로 꼼꼼히 보고 판단한다. 분량이 모자라거나 대충 했거나 사진이 할 일과 안 맞으면 재보고. 재보고면 언제까지 다시 보고할지 [보고: ...]도 같이 적는다.
+- 마감이 없던 일을 ${josa(u,'이/가')} 알아서 했다고 보고하면 [기록: 할 일 | 공부한 시간] 을 적는다.
+- 오늘 공부 목표를 정하거나 바꿀 때는 [목표: 3시간] 을 적는다.
+- 태그는 한 답장에 여러 개 적어도 된다. 할 일 이름은 짧게(예: 영어 단어 30개, 수학 2단원).
+- 마감이 지나 앱이 먼저 연락하게 하면 독촉 횟수가 함께 온다. 횟수가 늘수록 더 단호해진다.
+- [현재 관리 상태]의 숫자와 기록을 근거로 말한다. 기록을 지어내지 않는다. 어제보다 적거나 지각이 잦으면 짚고, 잘했으면 확실히 칭찬한다.
+- 수면, 식사, 아픈 몸처럼 건강에 관한 건 꾸짖지 않고 챙긴다.${S.stopWord?`
+- 멈춤 단어는 "${S.stopWord}"다. ${josa(u,'이/가')} 이 말을 하면 즉시 관리를 내려놓고 다정하게 괜찮은지 묻는다. 그 대화에서는 지시, 꾸중, 보고 마감을 걸지 않는다.`:''}
+
+[메신저 규칙]
+- 카카오톡처럼 말풍선 여러 개로 나눠 보낸다. 말풍선마다 줄을 바꿔 구분하고, 말풍선 하나는 1~3문장.
+- 분량은 상황에 맞게. 짧은 보고 확인이나 지시는 1~3개, 따끔하게 짚거나 달래거나 긴 얘기는 4~7개.
+- 행동 묘사(*...*), 괄호 지문, 따옴표, 이름표("${c}:")는 쓰지 않는다. 실제로 폰으로 보내는 말만.
+- AI, 언어모델, 시스템, 프롬프트, 앱, 태그 같은 말은 절대 하지 않는다. ${josa(c,'은/는')} 실제로 살아 있는 사람이다.
+- 메시지 앞의 [날짜 시각]은 보낸 때다. 직접 쓰지는 않지만 시간이 얼마나 흘렀는지와 지금이 몇 시인지에 맞춰 반응한다.
+- [뽀모도로 ...] 표시는 ${josa(u,'이/가')} 앱의 타이머로 집중 시간을 시작·완료·중단했다는 기록이다.`;
+  return{stable:st,dynamic:`[현재 관리 상태]\n${stateText()}`};
+}
+
+/* ══════════════════════ 태그 처리 ══════════════════════ */
+// 답장에서 [보고:], [확인:], [기록:], [목표:] 태그를 떼어 마감과 성과 기록에 반영한다.
+async function takeTags(text,ctx){
+  const acts=[];
+  text=(text||'').replace(/\[(보고|확인|기록|목표)\s*[:：]\s*([^\]\n]*)\]/g,(m,kind,body)=>{acts.push({kind,parts:body.split('|').map(s=>s.trim())});return '';});
+  const now=Date.now();
+  // 같은 답장 안에서는 확인을 먼저 처리해야 재보고 뒤 새 마감이 제대로 걸린다.
+  acts.sort((a,b)=>(a.kind==='확인'?0:1)-(b.kind==='확인'?0:1));
+  for(const a of acts){
+    const p=a.parts;
+    if(a.kind==='보고'){
+      const due=parseDue(p[0],now);const task=(p[1]||S.lastTask||'할 일').slice(0,60);
+      if(!due)continue;
+      const old=S.checks.find(c=>sameTask(c.task,task));
+      if(old){old.dueAt=due;old.round=0;old.lastNudgeAt=0;}
+      else S.checks.push({id:now+Math.random(),task,setAt:now,dueAt:due,nudges:0,round:0,lastNudgeAt:0,redo:0});
+      S.checks.sort((x,y)=>x.dueAt-y.dueAt);S.checks=S.checks.slice(0,5);
+      S.lastTask=task;
+    }else if(a.kind==='확인'){
+      const verdict=/재/.test(p[0])?'재보고':'통과';
+      const task=p[1]||'';
+      const ck=S.checks.find(c=>sameTask(c.task,task))||(S.checks.length?S.checks.reduce((x,y)=>x.dueAt<=y.dueAt?x:y):null);
+      if(verdict==='재보고'){
+        if(ck){ck.redo=(ck.redo||0)+1;if(ck.dueAt<now+5*MIN)ck.dueAt=now+30*MIN;ck.round=0;ck.lastNudgeAt=0;}
+        continue;
+      }
+      let mins=parseMin(p[2]);
+      if(ck){
+        mins=Math.max(0,mins-pomoMinutesBetween(ck.setAt,now));
+        await addRecord({type:'check',ts:now,task:ck.task,setAt:ck.setAt,dueAt:ck.dueAt,doneAt:now,lateMin:Math.max(0,Math.round((now-ck.dueAt)/MIN)),nudges:ck.nudges||0,redo:ck.redo||0,verdict:'통과',photo:!!ctx.photo,minutes:mins});
+        S.checks=S.checks.filter(c=>c!==ck);
+      }else{
+        mins=Math.max(0,mins-pomoMinutesBetween(now-mins*MIN-30*MIN,now));
+        await addRecord({type:'log',ts:now,task:task||'보고',verdict:'통과',photo:!!ctx.photo,minutes:mins});
+      }
+    }else if(a.kind==='기록'){
+      let mins=parseMin(p[1]);
+      mins=Math.max(0,mins-pomoMinutesBetween(now-mins*MIN-30*MIN,now));
+      await addRecord({type:'log',ts:now,task:(p[0]||'공부').slice(0,60),verdict:'통과',photo:!!ctx.photo,minutes:mins});
+    }else if(a.kind==='목표'){
+      const g=parseMin(p[0]);
+      if(g>0&&g<=24*60){S.goals=S.goals||{};S.goals[dk(now)]=g;}
+    }
+  }
+  await saveS();
+  return text;
+}
+// "60분" / "1시간 30분" → 지금부터, "21:30" → 오늘 그 시각(이미 지났으면 내일)
+function parseDue(s,now){
+  s=String(s||'');
+  const t=s.match(/(\d{1,2})\s*[:시]\s*(\d{2})?/);
+  if(t&&!/시간/.test(s)){
+    const d=new Date(now);d.setHours(+t[1],+(t[2]||0),0,0);
+    let at=d.getTime();if(at<now-5*MIN)at+=86400000;
+    return at>now&&at<now+24*3600000?at:null;
+  }
+  const m=parseMin(s);
+  return m>0&&m<=24*60?now+m*MIN:null;
+}
+async function addRecord(r){r.day=dk(r.ts);await dbPut('records',r);R.push(r);sortAll();if(curTab==='rec')renderRec();}
+
+/* ══════════════════════ 선톡 (마감 독촉 / 오래 조용할 때) ══════════════════════ */
+function lastUserTs(){for(let i=C.length-1;i>=0;i--)if(C[i].from==='user'&&!C[i].kind)return C[i].ts;return 0;}
+function quietNow(now){
+  const h=new Date(now).getHours();
+  // 조용한 시간이어도 2시간 안에 내가 말을 걸었으면 깨어 있는 걸로 본다.
+  return hourIn(h,+S.quietFrom,+S.quietTo)&&now-lastUserTs()>2*3600000;
+}
+async function tick(){
+  if(!S)return;
+  const now=Date.now();
+  if(S.pomo&&now>=S.pomo.endAt)await finishPomo();
+  if(S.chatDue&&now>=S.chatDue)fireChat();
+  if(curTab==='chat')renderStrip();
+  if(S.chatPaused||chatBusy||S.chatDue||!hasKey()||!S.userName||!S.charName)return;
+  if(S.pomo||S.calmUntil>now)return;
+  if(await nudgeCheck(now))return;
+  await idlePing(now);
+}
+// 보고 마감이 지났는데 보고가 없으면 먼저 연락한다. 마감+유예 → 그 뒤 일정 간격으로 최대 n번, 그래도 없으면 미보고로 기록.
+async function nudgeCheck(now){
+  const every=Math.max(3,+S.nudgeEvery||10)*MIN;
+  const lu=lastUserTs();
+  for(const ck of S.checks){
+    if(now<ck.dueAt+Math.max(0,+S.graceMin||0)*MIN)continue;
+    let next=ck.lastNudgeAt?ck.lastNudgeAt+every:ck.dueAt+Math.max(0,+S.graceMin||0)*MIN;
+    // 마감 뒤에 내가 대화 중이면(보고를 하는 중일 수 있으니) 마지막 메시지에서 한 간격은 기다린다.
+    if(lu>ck.dueAt)next=Math.max(next,lu+every);
+    if(now<next||quietNow(now))continue;
+    const late=Math.round((now-ck.dueAt)/MIN);
+    // 너무 오래 앱이 닫혀 있었거나 독촉을 다 썼으면 미보고로 닫고 한 번만 반응한다.
+    if(now-ck.dueAt>12*3600000||(ck.round||0)>=Math.max(1,+S.maxNudges||5)){
+      await addRecord({type:'check',ts:now,task:ck.task,setAt:ck.setAt,dueAt:ck.dueAt,doneAt:0,lateMin:late,nudges:ck.nudges||0,redo:ck.redo||0,verdict:'미보고',minutes:0});
+      S.checks=S.checks.filter(c=>c!==ck);await saveS();
+      genChatReply({proactive:true,cue:`(지금은 ${fmtNow()}. ${josa(uName(),'은/는')} "${ck.task}" 보고 마감(${hm(ck.dueAt)})을 ${fmtMin(late)} 넘기도록 끝내 보고하지 않았고, ${ck.nudges?`독촉을 ${ck.nudges}번 받고도 `:''}답이 없어서 미보고로 기록됐다. ${josa(cName(),'이/가')} 먼저 메시지를 보낸다. 이번엔 [보고:] 태그를 다시 걸지 않는다.)`});
+      return true;
+    }
+    ck.round=(ck.round||0)+1;ck.nudges=(ck.nudges||0)+1;ck.lastNudgeAt=now;await saveS();
+    genChatReply({proactive:true,cue:`(지금은 ${fmtNow()}. ${josa(uName(),'은/는')} "${ck.task}" 보고 마감(${hm(ck.dueAt)})이 ${fmtMin(late)} 지났는데 아직 보고하지 않았다. 이번이 ${ck.nudges}번째 독촉이다. ${josa(cName(),'이/가')} 먼저 메시지를 보내 보고를 요구한다.${ck.nudges>=2?' 독촉이 반복됐으니 앞보다 더 단호하게.':''} 이미 보고를 받았는데 놓친 거라면 [확인:] 태그만 붙이고 짧게 답한다.)`});
+    return true;
+  }
+  return false;
+}
+// 마감도 뽀모도로도 없이 오래 조용하면 먼저 연락해 지금 뭘 하는지 확인한다. 아침 첫 연락이면 기상 보고와 오늘 계획을 받는다.
+async function idlePing(now){
+  if(S.checks.length||!(+S.idleHours>0))return;
+  const last=C[C.length-1];
+  if(!last||quietNow(now))return;
+  if(now-last.ts<+S.idleHours*3600000)return;
+  // 먼저 보낸 메시지 두 번에 연달아 답이 없으면 내가 말할 때까지 더 보내지 않는다.
+  const tail=C.slice(-6).filter(c=>!c.kind);
+  if(tail.length>=2&&tail.slice(-2).every(c=>c.from==='char'&&c.pro==='idle'))return;
+  if(S.idlePingFor===last.ts)return;
+  S.idlePingFor=last.ts;await saveS();
+  const firstToday=!C.some(c=>dk(c.ts)===dk(now));
+  const hrs=Math.round((now-last.ts)/3600000);
+  genChatReply({proactive:true,pro:'idle',cue:`(지금은 ${fmtNow()}. 마지막 메시지 이후 ${hrs}시간쯤 연락이 없었다.${firstToday?' 오늘 첫 연락이다. 기상 보고와 오늘 할 일, 오늘 목표를 받는다.':' 지금 뭘 하고 있는지, 할 일은 어디까지 했는지 확인한다.'} ${josa(cName(),'이/가')} 먼저 메시지를 보낸다. 할 일을 시키면 [보고:] 태그로 마감을 건다.)`});
+}
+function notify(title,body){
+  if(!document.hidden)return;
+  try{
+    if('Notification' in window&&Notification.permission==='granted'&&navigator.serviceWorker){
+      navigator.serviceWorker.ready.then(r=>r.showNotification(title,{body,icon:'icons/icon-192.png',tag:'bd'})).catch(()=>{});
+    }
+  }catch(e){}
+}
+
+/* ══════════════════════ 뽀모도로 ══════════════════════ */
+let pomoPick=0;
+function openPomo(){
+  if(S.chatPaused){toast('일시정지 중이에요');return;}
+  if(S.pomo){
+    openSheet([[`중단하기 (${Math.floor((Date.now()-S.pomo.startAt)/MIN)}분 했어요)`,()=>stopPomo(),true]],`진행 중 · ${S.pomo.task} · ${mmss(S.pomo.endAt-Date.now())} 남음`);
+    return;
+  }
+  pomoPick=+S.pomoMin||25;
+  const opts=[...new Set([+S.pomoMin||25,25,50])].sort((a,b)=>a-b);
+  $('sheet').innerHTML=`<div class="sh">뽀모도로 시작</div><div class="form">
+    <div class="field"><label>할 일</label><input type="text" id="pomoTask" value="${esc(S.lastTask||'')}" placeholder="예: 영어 단어 30개"></div>
+    <div class="seg" id="pomoSeg">${opts.map(m=>`<button data-m="${m}" class="${m===pomoPick?'on':''}">${m}분</button>`).join('')}<button data-m="c">직접</button></div>
+    <div class="field hide" id="pomoCustomF"><label>시간 (분)</label><input type="number" id="pomoCustom" min="1" max="240" value="${pomoPick}"></div>
+    <button class="primary" onclick="startPomo()">시작</button></div>`;
+  $('pomoSeg').querySelectorAll('button').forEach(b=>b.onclick=()=>{
+    $('pomoSeg').querySelectorAll('button').forEach(x=>x.classList.toggle('on',x===b));
+    $('pomoCustomF').classList.toggle('hide',b.dataset.m!=='c');
+    pomoPick=b.dataset.m==='c'?0:+b.dataset.m;
+  });
+  $('sheetBg').style.display='flex';
+}
+async function startPomo(){
+  const task=($('pomoTask').value||'').trim()||'공부';
+  const min=pomoPick||Math.min(240,Math.max(1,parseInt($('pomoCustom').value)||25));
+  closeSheet();
+  const now=Date.now();
+  S.pomo={task,min,startAt:now,endAt:now+min*MIN};S.lastTask=task;
+  await sysMsg('pomo',`뽀모도로 시작 · ${task} · ${min}분 (${hm(now+min*MIN)}까지)`,now);
+  queueReply();
+}
+async function finishPomo(){
+  const p=S.pomo;if(!p)return;
+  S.pomo=null;
+  await addRecord({type:'pomo',ts:p.endAt,task:p.task,minutes:p.min,planned:p.min,completed:true,startAt:p.startAt});
+  await sysMsg('done',`뽀모도로 완료 · ${p.task} · ${p.min}분`,p.endAt);
+  notify('뽀모도로 완료',`${p.task} · ${p.min}분`);
+  queueReply(rand(2,8)*1000);
+}
+async function stopPomo(){
+  const p=S.pomo;if(!p)return;
+  const now=Date.now(),done=Math.floor((now-p.startAt)/MIN);
+  S.pomo=null;
+  if(done>=1)await addRecord({type:'pomo',ts:now,task:p.task,minutes:done,planned:p.min,completed:false,startAt:p.startAt});
+  await sysMsg('stop',`뽀모도로 중단 · ${p.task} · ${done}분 / ${p.min}분`,now);
+  queueReply();
+}
+async function sysMsg(kind,text,ts){
+  const m={from:'user',ts:ts||Date.now(),text,kind};
+  await dbPut('chats',m);C.push(m);sortAll();await saveS();
+  if(curTab==='chat'){renderChat();scrollChat();renderStrip();}
+}
+
+/* ══════════════════════ 대화 ══════════════════════ */
+function openChat(){
+  setAvatar($('chatAv'),S.charAvatar,cName());
+  $('chatName').textContent=cName();
+  applyPause();renderStrip();renderChat();scrollChat();
+}
+function applyPause(){
+  $('pausedBar').textContent=`${cName()}${hasBatchim(cName())?'과':'와'} 일시정지 중이에요 · 눌러서 해제`;
+  $('pausedBar').classList.toggle('hide',!S.chatPaused);
+  $('chatInputBar').classList.toggle('hide',!!S.chatPaused);
+  $('chatSub').textContent=S.chatPaused?'일시정지 중':chatBusy?'입력 중…':`오늘 ${fmtMin(dayMinutes(dk(Date.now())))} · 연속 ${streak()}일`;
+}
+function renderStrip(){
+  const now=Date.now();let h='';
+  if(S.pomo)h+=`<div class="pin pomo" onclick="openPomo()"><span class="ic">⏱</span><span class="t">${esc(S.pomo.task)}</span><span class="r">${mmss(S.pomo.endAt-now)}</span></div>`;
+  for(const c of S.checks){
+    const d=Math.round((c.dueAt-now)/MIN);
+    h+=`<div class="pin${d<0?' over':''}" onclick="checkMenu(${c.id})"><span class="ic">📌</span><span class="t">${esc(c.task)} · ${hm(c.dueAt)}까지 보고</span><span class="r">${d>=0?fmtMin(d)+' 남음':fmtMin(-d)+' 지남'}</span></div>`;
+  }
+  if($('strip').innerHTML!==h)$('strip').innerHTML=h;
+}
+// AI가 [확인:]을 빼먹었을 때를 위한 수동 처리
+function checkMenu(id){
+  const ck=S.checks.find(c=>c.id===id);if(!ck)return;
+  openSheet([
+    ['보고 완료로 기록',async()=>{const now=Date.now();await addRecord({type:'check',ts:now,task:ck.task,setAt:ck.setAt,dueAt:ck.dueAt,doneAt:now,lateMin:Math.max(0,Math.round((now-ck.dueAt)/MIN)),nudges:ck.nudges||0,redo:ck.redo||0,verdict:'통과',minutes:0,manual:true});S.checks=S.checks.filter(c=>c!==ck);await saveS();renderStrip();toast('기록했어요');}],
+    ['마감 취소 (기록 안 함)',async()=>{S.checks=S.checks.filter(c=>c!==ck);await saveS();renderStrip();toast('마감을 지웠어요');},true],
+  ],`${ck.task} · ${hm(ck.dueAt)}까지 · 독촉 ${ck.nudges||0}번`);
+}
+function scrollChat(){const s=$('chatScroll');requestAnimationFrame(()=>{s.scrollTop=s.scrollHeight;});}
+function renderChat(){
+  const out=[];let lastDay='';
+  const recent=C.slice(-300);
+  recent.forEach((c,i)=>{
+    const dd=dk(c.ts);
+    if(dd!==lastDay){lastDay=dd;const d=new Date(c.ts);out.push(`<div class="dsep">${d.getFullYear()}년 ${d.getMonth()+1}월 ${d.getDate()}일 ${'일월화수목금토'[d.getDay()]}요일</div>`);}
+    if(c.kind){out.push(`<div class="sysmsg ${c.kind}"><span>${esc(c.text)} · ${hm(c.ts)}</span></div>`);return;}
+    const next=recent[i+1];
+    const lastOfGroup=!next||next.kind||next.from!==c.from||dk(next.ts)!==dd||Math.floor(next.ts/MIN)!==Math.floor(c.ts/MIN);
+    const me=c.from==='user';
+    const t=lastOfGroup?`<span class="mt">${fmtTimeKo(c.ts)}</span>`:'';
+    if(me){
+      if(c.img)out.push(`<div class="mrow me" oncontextmenu="msgMenu(event,${c.id})">${c.text?'':t}<div class="bub img"><img src="${c.img}" onclick="viewImg(this.src)" alt=""></div></div>`);
+      if(c.text)out.push(`<div class="mrow me" oncontextmenu="msgMenu(event,${c.id})">${t}<div class="bub">${esc(c.text)}</div></div>`);
+    }else{
+      out.push(`<div class="mrow" oncontextmenu="msgMenu(event,${c.id})">${lastOfGroup?avatarHTML(S.charAvatar,cName(),38,'av'):'<span class="avsp"></span>'}<div class="bub">${esc(c.text)}</div>${t}</div>`);
+    }
+  });
+  if(chatBusy)out.push(`<div class="mrow">${avatarHTML(S.charAvatar,cName(),38,'av')}<div class="bub typing"><span></span><span></span><span></span></div></div>`);
+  if(!C.length&&!chatBusy)out.push(`<div class="dsep" style="margin-top:40px">${esc(cName())}에게 첫 보고를 보내 보세요</div>`);
+  $('chatlist').innerHTML=out.join('');
+  applyPause();
+}
+function onChatInput(){const t=$('chatInput');t.style.height='auto';t.style.height=Math.min(120,t.scrollHeight)+'px';}
+function onChatKey(e){if(e.key==='Enter'&&!e.shiftKey&&!e.isComposing&&matchMedia('(pointer:fine)').matches){e.preventDefault();sendChat();}}
+async function onChatImg(input){
+  const f=input.files[0];input.value='';if(!f)return;
+  try{pendingImg=await resizeImg(f,1280,0.85);}catch(e){toast(e.message);return;}
+  $('pendImg').innerHTML=`<img src="${pendingImg}" alt=""><button class="ghost" style="width:auto;padding:6px 12px" onclick="pendingImg=null;$('pendImg').classList.add('hide')">취소</button>`;
+  $('pendImg').classList.remove('hide');
+}
+async function sendChat(){
+  if(S.chatPaused){toast('일시정지 중이에요');return;}
+  const t=$('chatInput');const text=t.value.trim();
+  if(!text&&!pendingImg)return;
+  if(!S.userName||!S.charName){toast('먼저 설정 탭에서 이름을 정해 주세요');return;}
+  const m={from:'user',ts:Date.now(),text};
+  if(pendingImg){m.img=pendingImg;pendingImg=null;$('pendImg').classList.add('hide');}
+  await dbPut('chats',m);C.push(m);
+  // 멈춤 단어: 마감과 독촉을 모두 내리고, 3시간 동안 먼저 연락하지 않는다.
+  if(S.stopWord&&text.includes(S.stopWord)){S.checks=[];S.calmUntil=Date.now()+3*3600000;renderStrip();}
+  t.value='';onChatInput();renderChat();scrollChat();
+  queueReply();
+}
+// 답장 타이밍: 대부분 금방, 가끔 1~2분. 이미 기다리는 중이면 그 시각에 지금 메시지까지 같이 읽는다.
+function chatDelay(){const r=Math.random();return Math.round((r<.55?rand(3,12):r<.9?rand(12,45):rand(45,120))*1000);}
+async function queueReply(ms){
+  if(!S.chatDue||S.chatDue<Date.now()){S.chatDue=Date.now()+(ms==null?chatDelay():ms);await saveS();}
+  scheduleChat();
+}
+function scheduleChat(){clearTimeout(chatTimer);if(S.chatDue)chatTimer=setTimeout(fireChat,Math.max(0,S.chatDue-Date.now()));}
+async function fireChat(){
+  if(!S.chatDue||Date.now()<S.chatDue)return;
+  if(chatBusy){chatTimer=setTimeout(fireChat,1500);return;}
+  S.chatDue=0;await saveS();
+  if(!S.chatPaused)genChatReply();
+}
+function chatStamp(ts){const d=new Date(ts);return `${d.getMonth()+1}월 ${d.getDate()}일 ${'일월화수목금토'[d.getDay()]} ${fmtTimeKo(ts)}`;}
+function chatApiMessages(){
+  const recent=C.slice(-40);
+  const arr=[];let prevTs=0;
+  for(const c of recent){
+    const role=c.from==='char'?'assistant':'user';
+    let content=c.kind?`[${c.text}]`:(c.img?'(사진을 보냄) ':'')+(c.text||'');
+    if(!prevTs||c.ts-prevTs>=20*MIN)content=`[${chatStamp(c.ts)}]\n`+content;
+    prevTs=c.ts;
+    const last=arr[arr.length-1];
+    if(last&&last.role===role){last.content+='\n'+content;last._src.push(c);}
+    else arr.push({role,content,_src:[c]});
+  }
+  while(arr.length&&arr[0].role!=='user')arr.shift();
+  const tail=arr[arr.length-1];
+  if(tail&&tail.role==='user'){
+    const imgs=tail._src.filter(c=>c.img).slice(-3).map(c=>{const m=c.img.match(/^data:([^;]+);base64,(.*)$/);return m?{mime:m[1],b64:m[2]}:null;}).filter(Boolean);
+    if(imgs.length)tail.imgs=imgs;
+  }
+  return arr.map(({role,content,imgs})=>imgs?{role,content,imgs}:{role,content});
+}
+function splitChat(text){
+  text=(text||'').replace(/```[a-z]*\n?|```/g,'').trim();
+  const out=[];
+  for(let ln of text.split('\n')){
+    ln=ln.trim();if(!ln)continue;
+    if(/^\[[^\]]*\d{1,2}:\d{2}[^\]]*\]$/.test(ln))continue;
+    ln=ln.replace(/^\[\d{1,2}월 \d{1,2}일[^\]]*\]\s*/,'');
+    ln=ln.replace(new RegExp('^'+cName().replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+'\\s*[:：]\\s*'),'').replace(/^\*[^*]+\*\s*/,'').trim();
+    if(ln)out.push(ln);
+  }
+  return out.slice(0,10);
+}
+async function genChatReply(opts){
+  opts=opts||{};
+  if(chatBusy)return;
+  const msgs=chatApiMessages();
+  if(opts.cue){
+    // 내가 아무 말도 안 했는데 먼저 보내는 경우: 상황 설명을 사용자 차례로 덧붙인다(화면엔 안 보임).
+    const last=msgs[msgs.length-1];
+    if(last&&last.role==='user')last.content+='\n'+opts.cue;else msgs.push({role:'user',content:opts.cue});
+  }
+  if(!msgs.length||msgs[msgs.length-1].role!=='user')return;
+  const photo=!opts.cue&&!!(msgs[msgs.length-1].imgs||[]).length;
+  chatBusy=true;if(curTab==='chat'){renderChat();scrollChat();}
+  const startedAt=Date.now();
+  try{
+    let out=await callLLM({sys:buildSys(),messages:msgs,maxTokens:4000,effort:'low'});
+    out=await takeTags(out,{photo});
+    const parts=splitChat(out);
+    if(!parts.length)throw new Error('빈 답장이 왔어요');
+    for(let i=0;i<parts.length;i++){
+      await sleep(i===0?300:Math.min(2200,500+parts[i].length*40));
+      const m={from:'char',ts:Date.now(),text:parts[i]};
+      if(opts.proactive)m.pro=opts.pro||'nudge';
+      await dbPut('chats',m);C.push(m);
+      if(i===parts.length-1)chatBusy=false;
+      if(curTab==='chat'){renderChat();scrollChat();renderStrip();}
+    }
+    const preview=parts.join(' ').slice(0,90);
+    if(document.hidden)notify(cName(),preview);
+    else if(curTab!=='chat')toast(`${cName()}: ${preview.slice(0,40)}`,3500);
+  }catch(e){
+    if(!opts.proactive)toast(e.message||String(e),4500);
+  }finally{
+    chatBusy=false;if(curTab==='chat'){renderChat();scrollChat();}
+    if(!S.chatDue&&C.some(c=>c.from==='user'&&c.ts>startedAt)){S.chatDue=Date.now()+1500;await saveS();scheduleChat();}
+    maybeAutoMemory();
+  }
+}
+function chatMenu(){
+  openSheet([
+    ['뽀모도로',()=>openPomo()],
+    ['답장 다시 받기',()=>regenLast()],
+    [S.chatPaused?'일시정지 해제':'일시정지 (선톡·독촉 멈춤)',()=>togglePause()],
+  ]);
+}
+async function regenLast(){
+  if(chatBusy)return;
+  let n=0;while(C.length&&C[C.length-1].from==='char'){const m=C.pop();await dbDel('chats',m.id);n++;}
+  if(!n){toast('다시 받을 답장이 없어요');return;}
+  renderChat();genChatReply();
+}
+function msgMenu(e,id){
+  e.preventDefault();
+  openSheet([['이 메시지 삭제',async()=>{await dbDel('chats',id);C=C.filter(c=>c.id!==id);renderChat();},true]]);
+}
+async function togglePause(){
+  S.chatPaused=!S.chatPaused;
+  if(!S.chatPaused){
+    // 멈춰 있던 동안 지난 마감으로 한꺼번에 독촉이 오지 않게 다시 시작 시점부터 센다.
+    const now=Date.now();for(const c of S.checks)if(c.dueAt<now){c.dueAt=now+10*MIN;c.round=0;c.lastNudgeAt=0;}
+  }
+  await saveS();applyPause();renderStrip();
+  toast(S.chatPaused?'일시정지했어요. 선톡과 독촉이 오지 않아요':'다시 시작해요');
+}
+function viewImg(src){$('viewerImg').src=src;$('viewer').style.display='flex';}
+
+/* ══════════════════════ 기억(요약) ══════════════════════ */
+function unsummarized(){return C.filter(c=>c.ts>(S.memUpTo||0)).map(c=>({ts:c.ts,line:chatLine(c),len:(c.text||'').length+20}));}
+function nextChunk(items,maxItems){const chunk=[];let n=0;for(const it of items){if(chunk.length&&(n+it.len>12000||chunk.length>=maxItems))break;chunk.push(it);n+=it.len;}return chunk;}
+async function summarizeChunk(chunk){
+  const u=uName(),c=cName();
+  const prompt=`다음은 ${josa(c,'과/와')} ${josa(u,'이/가')} 주고받은 메신저 기록이다 (${fmtDate(chunk[0].ts)} ~ ${fmtDate(chunk[chunk.length-1].ts)}).
+나중에 ${josa(c,'이/가')} 이 시기를 기억할 수 있도록 기억 노트를 써줘.
+
+[포함할 것]
+- 새로 정한 규칙, 약속, 호칭
+- ${u}의 공부·생활 패턴, 자주 미루는 것, 잘한 것, 고민과 상태
+- 칭찬과 피드백, 관계의 변화
+[형식]
+- 한국어, '- '로 시작하는 짧은 문장 6~12개. 날짜를 알 수 있으면 함께. 기록에 있는 것만.
+
+[기록]
+${chunk.map(x=>x.line).join('\n')}`;
+  const meta={};
+  const out=(await callLLM({sys:'너는 두 사람의 기록을 꼼꼼하게 정리하는 기록 담당자다.',messages:[{role:'user',content:prompt}],maxTokens:4000,temperature:0.3,thinking:256,effort:'low',meta})).trim();
+  return out;
+}
+async function runMemory(all){
+  if(memBusy)return;memBusy=true;
+  try{
+    let items=unsummarized();
+    while(items.length&&(all||items.length>=60)){
+      const chunk=nextChunk(items,80);
+      setStatus('memStatus',`기억 정리 중… 남은 메시지 ${items.length}개`);
+      const content=await summarizeChunk(chunk);
+      if(content){const m={fromTs:chunk[0].ts,toTs:chunk[chunk.length-1].ts,content,createdAt:Date.now()};await dbPut('mems',m);M.push(m);}
+      S.memUpTo=chunk[chunk.length-1].ts;await saveS();
+      items=items.slice(chunk.length);
+      if(!all)break;
+    }
+    // 기억이 너무 길어지면 가장 오래된 4개를 하나로 합친다.
+    while(M.reduce((n,m)=>n+m.content.length,0)>12000&&M.length>=4){
+      const old=M.slice(0,4);
+      const content=(await callLLM({sys:'너는 기록을 압축하는 기록 담당자다.',messages:[{role:'user',content:`다음 기억 노트들을 중요한 규칙·약속·패턴·관계 변화만 남겨 하나로 합쳐줘. '- '로 시작하는 문장 10~15개, 날짜 유지.\n\n`+old.map(m=>`[${fmtDate(m.fromTs)} ~ ${fmtDate(m.toTs)}]\n${m.content}`).join('\n\n')}],maxTokens:4000,temperature:0.3,effort:'low'})).trim();
+      if(!content)break;
+      const merged={fromTs:old[0].fromTs,toTs:old[3].toTs,content,createdAt:Date.now()};
+      await dbPut('mems',merged);for(const m of old)await dbDel('mems',m.id);
+      M=[merged,...M.slice(4)];sortAll();
+    }
+    setStatus('memStatus',`정리 완료 · 기억 노트 ${M.length}개`);
+    if(curTab==='set')renderSettings();
+  }catch(e){setStatus('memStatus','중단됨: '+(e.message||e));}
+  finally{memBusy=false;}
+}
+function maybeAutoMemory(){if(unsummarized().length>=100)runMemory(false);}
+function setStatus(id,t){const el=$(id);if(el)el.textContent=t;}
+
+/* ══════════════════════ 기록 탭 ══════════════════════ */
+function renderRec(){
+  const now=Date.now(),today=dk(now);
+  const m=dayMinutes(today),g=goalFor(today),ck=dayChecks(today),at=allTime();
+  $('recSub').textContent=`연속 ${streak()}일`;
+  const days7=lastDays(7),max7=Math.max(60,...days7.map(dayMinutes));
+  const week=days7.map(d=>{const v=dayMinutes(d);const dt=new Date(d+'T12:00');return `<div class="col${d===today?' today':''}"><span class="v">${v?(v>=60?(v/60).toFixed(1)+'h':v+'m'):''}</span><span class="b" style="height:${Math.round(v/max7*90)}%"></span><span class="d">${'일월화수목금토'[dt.getDay()]}</span></div>`;}).join('');
+  // 잔디: 최근 18주. 열은 주(일~토).
+  const end=new Date();end.setHours(12,0,0,0);
+  const start=new Date(end);start.setDate(start.getDate()-start.getDay()-7*17);
+  const cells=[];
+  for(let d=new Date(start);cells.length<18*7;d.setDate(d.getDate()+1)){
+    const k=dk(d),v=dayMinutes(k),fut=d>end;
+    const gl=goalFor(k)||180;
+    const lv=fut?'fut':!v?'':v>=gl?'l4':v>=gl*.66?'l3':v>=gl*.33?'l2':'l1';
+    cells.push(`<i class="${lv}" title="${k} ${fmtMin(v)}"></i>`);
+  }
+  const recent=R.slice().reverse().slice(0,80);
+  let list='',lastD='';
+  for(const r of recent){
+    if(r.day!==lastD){lastD=r.day;const dm=dayMinutes(r.day);list+=`<div class="rday"><span>${r.day.replace(/-/g,'.')}</span><span>${fmtMin(dm)}</span></div>`;}
+    list+=recRow(r);
+  }
+  $('recBody').innerHTML=`
+  <div class="card today"><h3>오늘</h3>
+    <div class="big">${fmtMin(m)}</div>
+    <div class="goal">${g?`목표 ${fmtMin(g)} · ${Math.round(m/g*100)}%`:'목표 없음'}</div>
+    ${g?`<div class="bar"><i style="width:${Math.min(100,Math.round(m/g*100))}%"></i></div>`:''}
+    <div class="stats">
+      <div class="stat"><b>${ck.ontime}<span style="font-size:12px;color:var(--ink3)">/${ck.total}</span></b><span>제때 보고</span></div>
+      <div class="stat"><b>${ck.late+ck.missed}</b><span>지각·미보고</span></div>
+      <div class="stat"><b>${ck.nudges}</b><span>독촉 받음</span></div>
+    </div>
+  </div>
+  <div class="card"><h3>최근 7일</h3><div class="week">${week}</div></div>
+  <div class="card"><h3>공부한 날</h3><div class="heat">${cells.join('')}</div>
+    <div class="legend">적음 <i style="background:var(--card2)"></i><i style="background:#4a1a2b"></i><i style="background:#76203f"></i><i style="background:#a8234b"></i><i style="background:#e0577f"></i> 목표 달성</div></div>
+  <div class="card"><h3>누적</h3><div class="stats" style="margin-top:0">
+    <div class="stat"><b>${fmtMin(at.minutes)}</b><span>총 공부</span></div>
+    <div class="stat"><b>${at.days}일</b><span>공부한 날</span></div>
+    <div class="stat"><b>${at.ontimeRate==null?'-':at.ontimeRate+'%'}</b><span>제때 보고율</span></div></div></div>
+  <div class="row" style="margin-bottom:4px"><button class="ghost" onclick="editRec()">＋ 직접 추가</button><button class="ghost" onclick="exportCSV()">CSV 내보내기</button></div>
+  ${list||'<div class="empty">아직 기록이 없어요.<br>뽀모도로를 돌리거나 보고하면 여기에 쌓여요.</div>'}`;
+}
+function recRow(r){
+  let ic='📝',chips='';
+  if(r.type==='pomo'){ic='⏱';chips=r.completed?'<span class="chip ok">완료</span>':`<span class="chip late">중단 ${r.minutes}/${r.planned}분</span>`;}
+  else if(r.type==='check'){
+    ic=r.photo?'📷':'📌';
+    chips=r.verdict==='미보고'?'<span class="chip bad">미보고</span>':r.lateMin?`<span class="chip late">${fmtMin(r.lateMin)} 지각</span>`:'<span class="chip ok">제때</span>';
+    if(r.nudges)chips+=`<span class="chip mute">독촉 ${r.nudges}</span>`;
+    if(r.redo)chips+=`<span class="chip mute">재보고 ${r.redo}</span>`;
+  }else{ic=r.photo?'📷':'📝';chips='<span class="chip mute">자율</span>';}
+  return `<div class="rrow" onclick="recMenu(${r.id})"><span class="ic">${ic}</span><div class="t"><div class="tk">${esc(r.task)}</div><div class="meta">${chips}${hm(r.ts)}</div></div><span class="m">${r.minutes?fmtMin(r.minutes):''}</span></div>`;
+}
+function recMenu(id){
+  const r=R.find(x=>x.id===id);if(!r)return;
+  openSheet([
+    ['수정',()=>editRec(id)],
+    ['삭제',async()=>{if(!confirm('이 기록을 지울까요?'))return;await dbDel('records',id);R=R.filter(x=>x.id!==id);renderRec();},true],
+  ],`${r.task} · ${fmtDate(r.ts)} ${hm(r.ts)}`);
+}
+function editRec(id){
+  const r=id?R.find(x=>x.id===id):null;
+  const d=new Date(r?r.ts:Date.now());
+  const local=`${dk(d)}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  $('sheet').innerHTML=`<div class="sh">${r?'기록 수정':'기록 직접 추가'}</div><div class="form">
+    <div class="field"><label>할 일</label><input type="text" id="er-task" value="${esc(r?r.task:'')}" placeholder="예: 수학 2단원"></div>
+    <div class="row"><div class="field"><label>공부 시간 (분)</label><input type="number" id="er-min" min="0" value="${r?r.minutes||0:''}"></div>
+    <div class="field"><label>시각</label><input type="datetime-local" id="er-ts" value="${local}"></div></div>
+    <button class="primary" onclick="saveRec(${id||0})">저장</button></div>`;
+  $('sheetBg').style.display='flex';
+}
+async function saveRec(id){
+  const task=$('er-task').value.trim()||'공부',min=Math.max(0,parseInt($('er-min').value)||0);
+  const ts=new Date($('er-ts').value).getTime()||Date.now();
+  closeSheet();
+  if(id){const r=R.find(x=>x.id===id);r.task=task;r.minutes=min;r.ts=ts;r.day=dk(ts);await dbPut('records',r);sortAll();}
+  else await addRecord({type:'log',ts,task,minutes:min,verdict:'통과',manual:true});
+  renderRec();toast('저장했어요');
+}
+
+/* ══════════════════════ 설정 탭 ══════════════════════ */
+const _folds=new Set();
+const chev='<svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="m6 9 6 6 6-6"/></svg>';
+function fold(k,title,body){return `<details class="card" data-fold="${k}"${_folds.has(k)||(k==='ai'&&!hasKey())?' open':''}><summary><h3>${title}</h3>${chev}</summary>${body}</details>`;}
+function renderSettings(){
+  const p=S.provider;
+  const welcome=(!S.userName||!S.charName||!hasKey())?`<div class="card" style="border-color:var(--acc)"><h3 style="color:var(--ink)">처음 설정</h3><div class="hint">① 내 이름과 상대 이름 → ② AI 연결(API 키) → ③ 캐릭터와 관계 설정 → 저장</div></div>`:'';
+  const save='<button class="primary" style="margin-top:4px" onclick="saveSettings()">저장</button>';
+  $('setBody').innerHTML=`${welcome}
+  <div class="card"><h3>프로필</h3>
+    <div class="avrow">
+      <label class="avpick" for="fileAvatarUser">${avatarHTML(S.userAvatar,uName(),68)}<span>내 사진</span></label>
+      <label class="avpick" for="fileAvatarChar">${avatarHTML(S.charAvatar,cName(),68)}<span>상대 사진</span></label>
+    </div>
+    <div class="row"><div class="field"><label>내 이름</label><input type="text" id="s-userName" value="${esc(S.userName)}"></div>
+    <div class="field"><label>상대 이름</label><input type="text" id="s-charName" value="${esc(S.charName)}"></div></div>
+    ${save}
+  </div>
+  ${fold('ai','AI 연결',`<div class="field"><label>사용할 AI</label><select id="s-provider" onchange="onProvChange()">${Object.entries(PROVIDERS).map(([k,v])=>`<option value="${k}"${k===p?' selected':''}>${v.label}</option>`).join('')}</select></div>
+    <div id="provFields"></div>${save}`)}
+  ${fold('char','캐릭터 설정',`<div class="hint" style="margin-bottom:8px">상대의 성격과 말투예요.</div><div class="field"><textarea id="s-charSheet">${esc(S.charSheet)}</textarea></div>${save}`)}
+  ${fold('rel','관계와 규칙',`<div class="hint" style="margin-bottom:8px">호칭, 규칙, 칭찬과 피드백, 하지 않는 것을 적어 주세요. 매 대화마다 상대가 이걸 지켜요.</div><div class="field"><textarea id="s-relSheet">${esc(S.relSheet)}</textarea></div>
+    <div class="field"><label>멈춤 단어</label><input type="text" id="s-stopWord" value="${esc(S.stopWord)}" placeholder="예: 잠깐"></div>
+    <div class="hint" style="margin:-6px 0 12px">이 말을 보내면 걸려 있던 마감이 모두 풀리고, 3시간 동안 독촉·선톡이 멈추고, 상대가 관리를 멈추고 상태를 물어요.</div>${save}`)}
+  ${fold('mgmt','관리 방식',`
+    <div class="row"><div class="field"><label>마감 후 첫 독촉 (분)</label><input type="number" id="s-graceMin" min="0" value="${S.graceMin}"></div>
+    <div class="field"><label>독촉 간격 (분)</label><input type="number" id="s-nudgeEvery" min="3" value="${S.nudgeEvery}"></div></div>
+    <div class="row"><div class="field"><label>최대 독촉 횟수</label><input type="number" id="s-maxNudges" min="1" value="${S.maxNudges}"></div>
+    <div class="field"><label>조용하면 연락 (시간)</label><input type="number" id="s-idleHours" min="0" step="0.5" value="${S.idleHours}"></div></div>
+    <div class="hint" style="margin:-6px 0 12px">마감이 지나면 첫 독촉 → 간격마다 다시 → 최대 횟수까지 보고가 없으면 미보고로 기록돼요. '조용하면 연락'은 마감 없이 이 시간만큼 대화가 없을 때 먼저 확인하러 와요 (0이면 끔).</div>
+    <div class="row"><div class="field"><label>방해 금지 시작 (시)</label><input type="number" id="s-quietFrom" min="0" max="23" value="${S.quietFrom}"></div>
+    <div class="field"><label>방해 금지 끝 (시)</label><input type="number" id="s-quietTo" min="0" max="23" value="${S.quietTo}"></div></div>
+    <div class="hint" style="margin:-6px 0 12px">이 시간엔 먼저 연락하지 않아요. 단, 2시간 안에 내가 말을 걸었으면 깨어 있는 걸로 보고 독촉해요.</div>
+    <div class="row"><div class="field"><label>뽀모도로 기본 (분)</label><input type="number" id="s-pomoMin" min="1" value="${S.pomoMin}"></div>
+    <div class="field"><label>하루 목표 (분)</label><input type="number" id="s-goalMin" min="0" value="${S.goalMin}"></div></div>
+    <div class="hint" style="margin:-6px 0 12px">상대가 대화 중에 그날 목표를 따로 정하면 그게 우선이에요.</div>${save}`)}
+  ${fold('mem',`기억 (${M.length})`,`<div class="hint">대화가 쌓이면 자동으로 요약해 상대가 기억해요.</div>
+    <button class="ghost" style="margin-top:10px" onclick="runMemory(true)">지금 정리하기</button><div class="prog" id="memStatus">${unsummarized().length?`정리 안 된 메시지 ${unsummarized().length}개`:''}</div>
+    ${M.slice().reverse().map(m=>`<div class="memcard"><div class="md"><span>${fmtDate(m.fromTs)} ~ ${fmtDate(m.toTs)}</span><button class="danger" onclick="delMem(${m.id})">삭제</button></div>${esc(m.content)}</div>`).join('')}`)}
+  <div class="card"><h3>이번 달 사용량</h3>${usageHTML()}</div>
+  <div class="card"><h3>데이터와 개인정보</h3>
+    <div class="hint" style="margin-bottom:12px">대화, 사진, 기록은 모두 <b>이 기기 안에만</b> 저장돼요. 서버나 개발자에게 가지 않아요. 밖으로 나가는 건 답장을 만들 때 고른 AI 회사로 보내는 대화 내용뿐이고, 앱이 그 외 주소로는 아무것도 보낼 수 없게 막혀 있어요.</div>
+    <div class="row"><button class="ghost" onclick="exportBackup()">백업 저장</button><label class="ghost" for="fileBackup">백업 불러오기</label></div>
+    <div class="hint">백업 파일에는 API 키가 들어가지 않아요. 브라우저 데이터를 지우면 기록도 사라지니 가끔 백업해 두세요.</div>
+    <button class="ghost" style="margin-top:10px" onclick="exportCSV()">기록 CSV 내보내기</button>
+    <button class="ghost" style="margin-top:10px" onclick="askNotify()">알림 허용</button>
+    <button class="ghost danger" style="margin-top:10px" onclick="wipeAll()">모든 데이터 삭제</button>
+  </div>`;
+  onProvChange(true);
+  $('setBody').querySelectorAll('details[data-fold]').forEach(d=>d.addEventListener('toggle',()=>{d.open?_folds.add(d.dataset.fold):_folds.delete(d.dataset.fold);}));
+}
+function usageHTML(){
+  const g=S.usage;
+  if(!g||g.month!==new Date().toISOString().slice(0,7)||!g.calls)return `<div class="hint">아직 이번 달에 AI를 부른 기록이 없어요.</div>`;
+  const k=n=>n>=1e6?(n/1e6).toFixed(2)+'M':n>=1e3?Math.round(n/1e3)+'K':String(n);
+  return `<div class="hint" style="line-height:1.9">AI 호출 ${g.calls}번 · 입력 ${k(g.in)} · 캐시 ${k(g.cr)} · 출력 ${k(g.out)} 토큰<br>`+(g.usd?`<b style="color:var(--ink)">Claude 예상 비용 약 $${g.usd.toFixed(2)}</b>`:'')+(g.priced?'':'<br>Claude가 아닌 AI는 토큰 수만 기록해요.')+`</div>`;
+}
+function onProvChange(init){
+  const p=init?S.provider:$('s-provider').value;
+  const cfg=PROVIDERS[p];
+  const typed=Object.fromEntries(Object.keys(PROVIDERS).map(k=>[k,$('s-key-'+k)?$('s-key-'+k).value:S.keys[k]||'']));
+  let h='';
+  for(const [k,c] of Object.entries(PROVIDERS)){
+    if(c.noKey)continue;
+    h+=`<div class="field"><label>${c.label} API 키${k===p?' <b style="color:var(--acc2)">· 사용 중</b>':''}</label><input type="password" id="s-key-${k}" value="${esc(typed[k])}" placeholder="키를 붙여넣기" autocomplete="off"></div>`;
+  }
+  if(p==='local')h+=`<div class="field"><label>주소</label><input type="text" id="s-localUrl" value="${esc(S.localUrl)}"></div><div class="hint" style="margin:-6px 0 12px">같은 기기의 Ollama만 쓸 수 있어요(localhost). 다른 주소는 개인정보 보호를 위해 막혀 있어요.</div>`;
+  h+=`<div class="field"><label>모델</label><input type="text" id="s-model" value="${esc(S.models[p]||cfg.defaultModel)}"></div>`;
+  h+=`<button class="ghost" style="margin-bottom:10px" onclick="testAI()">연결 테스트</button><div class="prog" id="aiStatus"></div>`;
+  $('provFields').innerHTML=h;
+}
+function readSettingsForm(){
+  const v=id=>{const el=$(id);return el?el.value:undefined;};
+  const num=(id,def,lo,hi)=>{const x=parseFloat(v(id));return isNaN(x)?def:Math.min(hi,Math.max(lo,x));};
+  if(v('s-userName')!==undefined)S.userName=v('s-userName').trim();
+  if(v('s-charName')!==undefined)S.charName=v('s-charName').trim();
+  if(v('s-provider'))S.provider=v('s-provider');
+  for(const k of Object.keys(PROVIDERS))if($('s-key-'+k))S.keys[k]=$('s-key-'+k).value.trim();
+  if($('s-model'))S.models[S.provider]=$('s-model').value.trim();
+  if($('s-localUrl'))S.localUrl=$('s-localUrl').value.trim();
+  if(v('s-charSheet')!==undefined)S.charSheet=v('s-charSheet')||DEFAULT_CHAR;
+  if(v('s-relSheet')!==undefined)S.relSheet=v('s-relSheet')||DEFAULT_REL;
+  if(v('s-stopWord')!==undefined)S.stopWord=v('s-stopWord').trim();
+  if($('s-graceMin')){
+    S.graceMin=num('s-graceMin',2,0,120);S.nudgeEvery=num('s-nudgeEvery',10,3,240);S.maxNudges=Math.round(num('s-maxNudges',5,1,30));
+    S.idleHours=num('s-idleHours',3,0,48);S.quietFrom=Math.round(num('s-quietFrom',1,0,23));S.quietTo=Math.round(num('s-quietTo',8,0,23));
+    S.pomoMin=Math.round(num('s-pomoMin',25,1,240));S.goalMin=Math.round(num('s-goalMin',180,0,1440));
+  }
+}
+async function saveSettings(){readSettingsForm();await saveS();renderSettings();toast('저장했어요');}
+async function testAI(){
+  readSettingsForm();setStatus('aiStatus','연결하는 중…');
+  try{const out=await callLLM({sys:'짧게 답해.',messages:[{role:'user',content:'"연결 성공"이라고만 답해줘.'}],maxTokens:200,temperature:0,effort:'low'});await saveS();setStatus('aiStatus','✓ '+(out.trim().slice(0,40)||'응답 받음'));}
+  catch(e){setStatus('aiStatus','✗ '+(e.message||e));}
+}
+async function onAvatar(input,key){
+  const f=input.files[0];input.value='';if(!f)return;
+  readSettingsForm();
+  try{S[key]=await resizeImg(f,512,0.85);}catch(e){toast(e.message);return;}
+  await saveS();renderSettings();
+}
+async function delMem(id){if(!confirm('이 기억 노트를 지울까요?'))return;await dbDel('mems',id);M=M.filter(x=>x.id!==id);renderSettings();}
+function resizeImg(file,maxDim,q){
+  return new Promise((res,rej)=>{
+    const img=new Image(),url=URL.createObjectURL(file);
+    img.onload=()=>{
+      let{width:w,height:h}=img;const s=Math.min(1,maxDim/Math.max(w,h));w=Math.round(w*s);h=Math.round(h*s);
+      const cv=document.createElement('canvas');cv.width=w;cv.height=h;cv.getContext('2d').drawImage(img,0,0,w,h);
+      URL.revokeObjectURL(url);res(cv.toDataURL('image/jpeg',q));
+    };
+    img.onerror=()=>{URL.revokeObjectURL(url);rej(new Error('이미지를 읽지 못했어요'));};
+    img.src=url;
+  });
+}
+async function askNotify(){
+  if(!('Notification' in window)){toast('이 브라우저는 알림을 지원하지 않아요');return;}
+  const r=await Notification.requestPermission();
+  toast(r==='granted'?'알림을 켰어요':'알림이 허용되지 않았어요');
+}
+function download(blob,name){
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=name;
+  document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),5000);
+}
+async function shareOrDownload(blob,name,type){
+  try{const file=new File([blob],name,{type});if(navigator.canShare&&navigator.canShare({files:[file]})){await navigator.share({files:[file],title:name});return;}}
+  catch(e){if(e.name==='AbortError')return;}
+  download(blob,name);
+}
+function exportBackup(){
+  const s=Object.assign({},S,{keys:{}});
+  const data={app:'bd',version:1,exportedAt:Date.now(),S:s,chats:C,records:R,mems:M};
+  shareOrDownload(new Blob([JSON.stringify(data)],{type:'application/json'}),`bd-backup-${dk(Date.now()).replace(/-/g,'')}.json`,'application/json');
+}
+function exportCSV(){
+  const q=v=>{v=v==null?'':String(v);return /[",\n]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v;};
+  const head=['날짜','시각','종류','할 일','공부(분)','결과','지각(분)','독촉','재보고','사진','마감'];
+  const type={pomo:'뽀모도로',check:'마감 보고',log:'자율 보고'};
+  const rows=R.map(r=>[r.day,hm(r.ts),type[r.type]||r.type,r.task,r.minutes||0,r.type==='pomo'?(r.completed?'완료':'중단'):r.verdict||'',r.lateMin||0,r.nudges||0,r.redo||0,r.photo?'O':'',r.dueAt?hm(r.dueAt):''].map(q).join(','));
+  shareOrDownload(new Blob(['﻿'+[head.join(','),...rows].join('\n')],{type:'text/csv'}),`bd-records-${dk(Date.now()).replace(/-/g,'')}.csv`,'text/csv');
+}
+async function onImportBackup(input){
+  const f=input.files[0];input.value='';if(!f)return;
+  let d;try{d=JSON.parse(await f.text());}catch(e){toast('백업 파일을 읽지 못했어요');return;}
+  if(d.app!=='bd'){toast('BD 백업 파일이 아니에요');return;}
+  if(!confirm('지금 데이터를 모두 지우고 백업으로 바꿀까요? (API 키는 유지돼요)'))return;
+  const keys=S.keys;
+  for(const s of ['chats','records','mems'])await dbClear(s);
+  S=Object.assign({},DEF,d.S||{},{keys});await saveS();
+  for(const [s,arr] of [['chats',d.chats],['records',d.records],['mems',d.mems]])for(const x of arr||[])await dbPut(s,x);
+  [C,R,M]=await Promise.all(['chats','records','mems'].map(dbAll));sortAll();setTab('rec');toast('백업을 불러왔어요');
+}
+async function wipeAll(){
+  if(!confirm('대화, 기록, 기억, 설정이 모두 지워져요. 정말 삭제할까요?'))return;
+  if(!confirm('되돌릴 수 없어요. 마지막으로 확인할게요.'))return;
+  for(const s of ['kv','chats','records','mems'])await dbClear(s);
+  S=Object.assign({},DEF,{keys:{},models:{},checks:[],goals:{}});C=[];R=[];M=[];setTab('set');toast('모두 삭제했어요');
+}
+
+/* ══════════════════════ 시트 ══════════════════════ */
+function openSheet(items,head){
+  $('sheet').innerHTML=(head?`<div class="sh">${esc(head)}</div>`:'')+items.map((it,i)=>`<button data-i="${i}"${it[2]?' class="danger"':''}>${esc(it[0])}</button>`).join('')+`<button onclick="closeSheet()" style="color:var(--ink3)">닫기</button>`;
+  $('sheet').querySelectorAll('button[data-i]').forEach(b=>b.onclick=()=>{closeSheet();items[+b.dataset.i][1]();});
+  $('sheetBg').style.display='flex';
+}
+function closeSheet(){$('sheetBg').style.display='none';}
+
+/* ══════════════════════ 시작 ══════════════════════ */
+boot().catch(e=>{document.body.innerHTML='<div style="padding:30px;color:#fff;font-family:sans-serif">앱을 열지 못했어요: '+esc(e.message||e)+'</div>';});
+if('serviceWorker' in navigator){window.addEventListener('load',()=>{navigator.serviceWorker.register('sw.js').catch(()=>{});});}
+</script>
+</body>
+</html>
